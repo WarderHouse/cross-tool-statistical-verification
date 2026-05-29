@@ -112,7 +112,7 @@ def compile_report(project, out_dir, all_results, intake_artifacts, comparison_r
              "across tools. It cannot judge substance. Before treating these results as "
              "final, the analyst should still confirm:\n")
     L.append("- that coefficient signs and magnitudes are theoretically plausible;")
-    L.append("- that the intake summary above matches the original downloaded source file;")
+    L.append("- that the intake summary above matches your raw source file;")
     L.append("- that the chosen model and specification answer the research question.\n")
 
     (out_dir / "verification_log.md").write_text("\n".join(L))

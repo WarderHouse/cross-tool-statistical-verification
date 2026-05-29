@@ -15,7 +15,7 @@ reproducible.
 
 | Phase | What happens |
 |---|---|
-| 1. Data intake | Shape, dtypes, missing-value counts, descriptives, and category frequencies of the data **as loaded**, so you can confirm it matches the file you downloaded. |
+| 1. Data intake | Shape, dtypes, missing-value counts, descriptives, and category frequencies of the data **as loaded**, so you can confirm it matches your raw file. |
 | 2. Transformations | If your analysis declares a `prepare()` step, a before/after snapshot plus range and integrity checks. |
 | 3. Consistency + spot-checks | Every reported statistic is checked to be the kind of number it claims to be (R² in [0, 1], a p-value in [0, 1], a loading in [-1, 1], residuals summing to ~0, a coefficient of the expected sign), and selected values are **recomputed directly from the raw data**. |
 | 4. Reproducibility | The analysis is re-run and every statistic must come back **identical** (deterministic), or identical once a seed is fixed (stochastic). |

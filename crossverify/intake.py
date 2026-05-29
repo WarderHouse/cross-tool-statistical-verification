@@ -2,7 +2,7 @@
 
 Reports the shape, dtypes, missing-value counts, numeric descriptives, and
 categorical frequencies of the dataset as loaded, so the researcher can confirm
-the file the harness sees matches the file they downloaded.
+the file the harness sees matches their raw file.
 """
 
 from .checks import CheckResult

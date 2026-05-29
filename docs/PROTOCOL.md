@@ -83,7 +83,7 @@ count, every column's data type, the count of missing values per column, the
 first ten rows, descriptive statistics for the numeric columns, and frequency
 counts for the categorical ones. Nothing here passes or fails; it is all
 informational. The point is to let you confirm that the file the harness sees is
-the file you downloaded, before a single number is computed. This phase also
+your raw file, before a single number is computed. This phase also
 records the minimum and maximum of each numeric column, which a later phase uses
 to sanity-check cluster centroids.
 
