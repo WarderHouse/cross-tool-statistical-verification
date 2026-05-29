@@ -1,5 +1,7 @@
 # cross-tool-statistical-verification
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20448660.svg)](https://doi.org/10.5281/zenodo.20448660)
+
 Verify a statistical analysis the way a careful reviewer would: confirm the
 numbers are internally consistent, reproduce identically on a second run, and
 **agree with an independent implementation in another tool**. `crossverify` runs
