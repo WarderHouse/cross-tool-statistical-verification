@@ -6,6 +6,8 @@ as you switch the R replication between a correct version and two realistic
 bugs. It is a teaching aid, not the tool itself: the command-line tool in the
 parent directory is what you run on real analyses.
 
+**Hosted:** <https://olivercrocco.shinyapps.io/ctsv-demo/>
+
 ## What it shows
 
 - **Correct** (`mpg ~ wt + hp`) — every statistic matches across Python and R; the run passes.

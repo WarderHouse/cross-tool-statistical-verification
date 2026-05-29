@@ -11,6 +11,10 @@ Built for researchers who use AI assistance to write analysis code and need to
 demonstrate to editors, reviewers, and co-authors that the results are real and
 reproducible.
 
+**Try it in your browser:** a [live demo](https://olivercrocco.shinyapps.io/ctsv-demo/)
+runs the verification on the mtcars example and lets you watch the cross-tool check
+catch a bug. Its source is in [demo/](demo/).
+
 ## What it checks
 
 | Phase | What happens |
