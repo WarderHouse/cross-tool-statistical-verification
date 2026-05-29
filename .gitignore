@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.DS_Store
+
+# Generated verification outputs
+crossverify_out/
+
+# Your real studies are private — keep them here and they stay out of git.
+# (The committed examples/ project is the only one tracked.)
+projects/

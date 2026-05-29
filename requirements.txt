@@ -1,0 +1,6 @@
+# Core harness
+PyYAML
+pandas
+
+# Needed only to run the worked example in examples/ (OLS regression)
+statsmodels

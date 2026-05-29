@@ -1,0 +1,36 @@
+analysis_name: "OLS regression: mpg ~ wt + hp (mtcars)"
+seed: null                 # deterministic analysis; no randomness to seed
+
+data: data/mtcars.csv
+python:
+  module: analysis.py      # defines run(df, seed=None) -> dict
+r:
+  script: analysis.R       # independent replication; emits the same names
+
+# Phase 3 — internal consistency checks, keyed by emitted statistic name.
+checks:
+  n_obs:      {kind: count, equals: 32}
+  model_r2:   {kind: r_squared}
+  p_wt:       {kind: p_value}
+  p_hp:       {kind: p_value}
+  coef_wt:    {kind: coefficient, expected_sign: negative}   # heavier cars: lower mpg
+  coef_hp:    {kind: coefficient, expected_sign: negative}   # more power: lower mpg
+  resid_sum:  {kind: residual_sum}                           # OLS residuals sum to ~0
+
+# Phase 3 — recompute a reported value directly from the raw data.
+spot_checks:
+  - stat: mean_mpg
+    op: mean
+    column: mpg
+
+# Phase 5 — cross-tool comparison tolerances.
+tolerance:
+  default_atol: 1.0e-8
+  default_rtol: 1.0e-6
+  per_key:
+    p_wt: {atol: 1.0e-6}
+    p_hp: {atol: 1.0e-6}
+
+metadata:
+  python_libs: ["pandas", "statsmodels"]
+  r_libs: ["stats"]
