@@ -1,0 +1,3 @@
+# Triage plan files are written here by the `triage-ticket` skill.
+# This placeholder keeps the directory tracked in git so future triage runs
+# (which branch off origin/main) always find `.dev/tasks/` present.

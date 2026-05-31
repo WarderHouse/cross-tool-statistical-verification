@@ -63,6 +63,26 @@ def run_python(adapter, df, seed):
     return _coerce(result)
 
 
+# Variables the R child legitimately needs; everything else in the parent
+# environment (tokens, cloud credentials, etc.) is withheld from the
+# user-supplied R script. R_* / LC_* families are matched by prefix below.
+_R_ENV_ALLOW = ("PATH", "HOME", "LANG", "LC_ALL", "TZ", "TMPDIR",
+                "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH")
+
+
+def _r_child_env(helper_path):
+    """Build a minimal environment for the Rscript child.
+
+    Copies only an allowlist from the parent environment so secrets the parent
+    holds are not exposed to the user-supplied R script, then points
+    CROSSVERIFY_R at the helper library.
+    """
+    env = {k: v for k, v in os.environ.items()
+           if k in _R_ENV_ALLOW or k.startswith(("R_", "LC_"))}
+    env["CROSSVERIFY_R"] = str(helper_path)
+    return env
+
+
 def r_available():
     return shutil.which("Rscript") is not None
 
@@ -86,8 +106,7 @@ def run_r(r_script, data_path, seed, helper_path):
     fd, out_path = tempfile.mkstemp(suffix=".json")
     os.close(fd)
     try:
-        env = dict(os.environ)
-        env["CROSSVERIFY_R"] = str(helper_path)
+        env = _r_child_env(helper_path)
         cmd = ["Rscript", str(r_script), str(data_path), out_path,
                "" if seed is None else str(seed)]
         proc = subprocess.run(cmd, capture_output=True, text=True, env=env)

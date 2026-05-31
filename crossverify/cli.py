@@ -175,6 +175,8 @@ python:
 r:
   script: analysis.R    # the independent replication; emit the same names
 
+# allow_external_paths: false   # set true to permit data/scripts outside this folder
+
 # Phase 3 — internal consistency checks, keyed by emitted statistic name.
 # kinds: r_squared, p_value, proportion, variance_explained, loading, correlation,
 #        count (+ equals), coefficient (+ expected_sign), residual_sum, converged, centroid (+ column)
