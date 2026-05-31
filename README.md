@@ -46,6 +46,19 @@ results never leave your computer. Generated outputs and a `projects/` directory
 for your real studies are git-ignored, so nothing sensitive is committed even
 though this repository is public.
 
+### Trust boundary
+
+A project file is **executable code**, not just configuration: the harness
+imports and runs the Python module and `Rscript`-executes the R script it names,
+and pandas/R parse the dataset you point it at. **Run only project bundles and
+datasets you trust** — running someone else's bundle is equivalent to running
+their program. As a guardrail, the `data`, `python.module`, and `r.script` paths
+must resolve **inside the project folder**; a path that escapes it (an absolute
+path or `..`) is reported and the run aborts before any code executes. Set
+`allow_external_paths: true` in the project file if you deliberately keep data or
+scripts elsewhere. The user-supplied R script also receives only a minimal
+environment (no inherited tokens or credentials).
+
 ## Install
 
 ```bash

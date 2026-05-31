@@ -1,6 +1,7 @@
 """Phase 6 — compile the verification log, comparison table, and methodology statement."""
 
 import json
+import string
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
@@ -57,8 +58,17 @@ def _methodology(project, env, comparison_rows, template_path):
         "tolerance_desc": tol_desc,
         "tool_version": __version__,
     }
-    template = Path(template_path).read_text()
-    return template.format(**fields)
+    return _render(Path(template_path).read_text(), fields)
+
+
+def _render(template_text, fields):
+    """Fill ``$name`` placeholders from ``fields``.
+
+    Uses ``string.Template.safe_substitute`` so a user-edited template with an
+    unknown or malformed placeholder leaves the token intact instead of raising
+    or exposing attribute access (unlike ``str.format``).
+    """
+    return string.Template(template_text).safe_substitute(fields)
 
 
 def compile_report(project, out_dir, all_results, intake_artifacts, comparison_rows,
