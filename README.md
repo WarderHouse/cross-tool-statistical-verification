@@ -122,6 +122,15 @@ def run(df, seed=None):
     }
 ```
 
+The adapter may also expose `prepare(df, seed=None) -> DataFrame` (e.g. to
+standardize features before clustering). When it does, `prepare()` is the single
+source of truth for the analyzed data: it is called **once**, and the resulting
+frame is what Phase 2 snapshots, what the Phase-3 consistency ranges are derived
+from, **and** what `run()` receives — so the statistics and the checks they are
+measured against always live in the same space. With no `prepare()`, `run()`
+receives the raw data as loaded. (Spot-checks always recompute against the raw
+source, as an independent cross-reference.)
+
 **2. An R script** that computes the same statistics and emits them under the
 same names:
 
@@ -204,6 +213,20 @@ python -m crossverify --project analysis/project.yaml || exit 1
   expectations compared within a sampling-error tolerance), not seed-matched
   random draws. Compare a coefficient and its standard error rather than a
   p-value, which diverges near the boundary on small SE/df-convention differences.
+- **Defensible cross-tool divergence.** A correct analysis can legitimately differ
+  across tools past a tight tolerance — robust-SE variants, `ddof`/denominator
+  choices, contrast coding, tie handling. So that the exit code does not pressure
+  you into degrading correct code to turn the build green, declare
+  `severity: info` in that statistic's per-key tolerance: a Phase-5 mismatch is
+  then reported as **INFO** (surfaced for a human to interpret) rather than a
+  **FAIL**. A statistic that is simply absent in one tool is always a hard
+  failure regardless of severity — the replication is incomplete.
+
+  ```yaml
+  tolerance:
+    per_key:
+      coef_robust_se: {severity: info}   # known SE-convention difference: advise, don't fail
+  ```
 - **No R installed.** Use `--skip-r` to run phases 1-4 and 6. Phase 5 reports as
   skipped rather than failing.
 - **Data format.** The harness reads your dataset as CSV (both the Python and R
@@ -240,6 +263,37 @@ and **tool-independent**. Three limits matter:
 ```bash
 python tests/test_checks.py     # or: python -m pytest
 ```
+
+## Installing uv
+
+[uv](https://docs.astral.sh/uv/) is a fast Python package manager. Install **uv
+itself first**, then use it to set up `crossverify`'s environment.
+
+Install uv (pick one):
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh   # macOS / Linux
+pipx install uv                                    # via pipx
+brew install uv                                    # macOS (Homebrew)
+```
+
+On Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Then create an environment and install the dependencies:
+
+```bash
+uv venv
+uv pip install -r requirements.txt
+```
+
+> Packaging is migrating from `requirements.txt` to a uv-native `pyproject.toml`
+> + `uv.lock` (see [#5](https://github.com/WarderHouse/cross-tool-statistical-verification/issues/5)).
+> Until that lands, `uv pip install -r requirements.txt` works today; afterward
+> this becomes `uv sync`.
 
 ## License
 

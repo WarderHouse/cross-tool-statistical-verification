@@ -67,6 +67,22 @@ def tol_for(tolerance: dict, key: str):
     return atol, rtol, use_abs
 
 
+def severity_for(tolerance: dict, key: str) -> str:
+    """Resolve a statistic's cross-tool severity: 'fail' (default) or 'info'.
+
+    A cross-tool mismatch is a hard failure by default — agreement across an
+    independent implementation is the whole point of Phase 5. But correct
+    analyses legitimately differ past a tight tolerance for defensible reasons
+    (robust-SE variants, ddof/denominator choices, contrast coding, tie
+    handling). Declaring ``severity: info`` in a statistic's per-key tolerance
+    reports such a divergence as INFO rather than failing the build, so a
+    researcher is not pushed to degrade correct code just to turn the run green.
+    """
+    over = (tolerance.get("per_key") or {}).get(key) or {}
+    sev = str(over.get("severity", "fail")).lower()
+    return sev if sev in ("fail", "info") else "fail"
+
+
 def fmt(x) -> str:
     """Format a number for the log without lying about precision."""
     if x is None:

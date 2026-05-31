@@ -65,6 +65,14 @@ Every change must keep the unit tests green AND the mtcars example PASSing. Add 
   only and scales its tolerance to the response; `loading` in [-1, 1] only when standardized;
   an unexpected coefficient sign is INFO by default (not FAIL); centroid ranges come from the
   analyzed (prepared) frame; NaN never counts as agreement.
+- **prepare()/run() contract:** if the adapter declares `prepare()`, it is called once and its
+  output is the analyzed frame — fed to `run()` and used for the Phase-3 ranges, so statistics
+  and checks share one space (spot-checks still recompute against the raw source). It is not
+  run for an intake-only (`--phases 1`) invocation.
+- **Cross-tool severity:** a Phase-5 mismatch FAILs by default; a statistic whose per-key
+  tolerance declares `severity: info` reports a divergence as INFO instead (for defensible
+  robust-SE/`ddof`/contrast differences), so the exit code doesn't reward degrading correct
+  code. A statistic absent in one tool is always a hard FAIL.
 - **Voice:** prose is plain and precise, never overstated; no marketing of correctness.
 
 ## Layout

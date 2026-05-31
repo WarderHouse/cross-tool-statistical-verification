@@ -132,8 +132,11 @@ when you declare a `column`, so a correct large-scale fit is not failed by
 floating-point accumulation. A coefficient with the wrong sign is reported as
 *informational* by default rather than failed, because a flipped sign is often
 the substantive finding (set `severity: fail` to harden it). A cluster centroid
-is checked against the observed range of its variable in the *analyzed* space
-(the prepared frame, if a `prepare()` step standardized the features). Group
+is checked against the observed range of its variable in the *analyzed* space.
+When the adapter declares a `prepare()` step, that step is run once and its
+output is the analyzed frame: it is what `run()` receives and what these ranges
+are derived from, so a statistic and the range it is checked against cannot end
+up in different spaces. Group
 checks cover cases that span several statistics, such as cluster sizes summing to
 N or a variance decomposition summing to one. The second kind is the spot-check:
 the harness recomputes a reported value directly from the raw data (a mean, sum,
@@ -176,7 +179,12 @@ The purpose is to establish that a result is *implementation-independent*, not
 that it is correct. Two correctly-disagreeing tools (robust-SE variants, `ddof`
 or denominator conventions, factor contrast coding, optimizer defaults) can
 exceed the tolerance on a correct analysis, so read a mismatch as a question, not
-a verdict, and resist "fixing" sound code to satisfy a verifier. The comparison
+a verdict, and resist "fixing" sound code to satisfy a verifier. When you have
+identified such a divergence as expected, declare `severity: info` in that
+statistic's per-key tolerance: the harness then reports the disagreement as
+informational instead of failing the build, so the exit code stops rewarding the
+degradation of correct code (a statistic missing from one tool stays a hard
+failure regardless, since that means the replication is incomplete). The comparison
 is also only meaningful for deterministic estimators: because Python and R use
 different random number generators, a shared seed does not produce the same
 random stream, so stochastic procedures (bootstrap, k-means initialization,
