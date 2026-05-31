@@ -28,26 +28,40 @@ expected N. A large share of wrong numbers downstream originate here.
 
 **3. Consistency and spot-checks.** Each reported statistic is range- and
 sign-checked against what its type permits: an R-squared or proportion in [0, 1],
-a p-value in [0, 1], a loading or correlation in [-1, 1], residuals summing to
-zero, a coefficient of the hypothesized sign, convergence flags, centroids inside
-the variable's support. Group invariants are checked too, such as cluster sizes
-summing to N or a variance decomposition summing to one. Then at least one
-statistic is recomputed directly from the raw data along an independent path, so
-the estimate cannot silently disagree with its own inputs.
+a p-value in [0, 1], a standardized loading or correlation in [-1, 1], an
+OLS-with-intercept residual sum near zero, a coefficient of a hypothesized sign
+(a mismatch is flagged for review, not failed — it is often the finding),
+convergence flags, centroids inside the analyzed variable's support. Group
+invariants are checked too, such as cluster sizes summing to N or a variance
+decomposition summing to one. Then at least one statistic is recomputed directly
+from the raw data along an independent path, so the estimate cannot silently
+disagree with its own inputs.
 
 **4. Reproducibility.** The Python analysis is re-executed and required to return
-identical results, under a fixed seed if it is stochastic. A value that drifts
-between runs signals uncontrolled state or unseeded randomness, which would defeat
-replication regardless of anything else.
+essentially identical results (a very tight tolerance, not bit-exact, so a
+multithreaded BLAS reducing sums in a different order does not fail correct
+deterministic code). A value that drifts beyond that signals uncontrolled state
+or unseeded randomness. This tests determinism *within one process*; it is not a
+guarantee of reproducibility on another machine or BLAS build. A fixed seed makes
+a same-tool re-run reproducible, but that does not carry across tools (see
+Phase 5).
 
 **5. Cross-tool triangulation.** The core check. The analysis is re-estimated in
 R, written independently, and the two result sets are compared statistic by
-statistic within tolerance. Agreement across two implementations is strong
-evidence that a result reflects the data rather than one library's conventions
-(estimator defaults, denominator choices, handling of ties or missing values).
-Tolerances are configurable per statistic, including magnitude-only comparison
-for sign-indeterminate quantities such as PCA loadings. Mismatches, and
-statistics present in one tool but not the other, are reported explicitly.
+statistic within tolerance. Agreement is strong evidence that a result is
+**implementation-independent** — not an artifact of one library's conventions
+(estimator defaults, denominator choices, tie or missing handling). It is not
+proof of correctness: you write both sides, so a shared specification error
+agrees perfectly. Nor is disagreement always error — defensible convention
+differences (robust SEs, `ddof`, contrast coding) can exceed a tight tolerance on
+correct code, so a mismatch is a prompt to understand *why*, not a signal to
+force one tool to mimic the other. Crucially, the comparison is meaningful only
+for **deterministic** estimators: Python and R use different RNGs, so a shared
+seed does not align random streams, and genuinely stochastic procedures will not
+match across tools even when both are correct. Tolerances are configurable per
+statistic, including magnitude-only comparison for sign-indeterminate quantities
+such as PCA loadings. Mismatches, and statistics present in one tool but not the
+other, are reported explicitly.
 
 **6. Reporting.** Everything is compiled into a verification log, the cross-tool
 comparison table, a machine-readable results file, and a methodology paragraph
@@ -56,8 +70,11 @@ manuscript. The run returns a nonzero exit code on any failure, so it composes
 with CI.
 
 **Scope.** The harness establishes that results are internally consistent,
-reproducible, and implementation-independent. It does not adjudicate
-specification: whether the model is appropriate, the identifying assumptions
+reproducible within a process, and implementation-independent. It does *not*
+establish correctness: agreement is not sufficient (a shared specification error,
+or a shared BLAS kernel, agrees perfectly) and not strictly necessary (correct
+analyses can differ for defensible reasons). It also does not adjudicate
+specification — whether the model is appropriate, the identifying assumptions
 hold, or an effect is substantively meaningful. Those judgments stay with the
 analyst, and the log says so explicitly.
 
@@ -104,27 +121,41 @@ downstream.
 The harness runs your Python analysis and collects the statistics it returns. It
 then applies two kinds of automatic checks. The first is internal consistency:
 each statistic is checked to be the kind of number it claims to be. An R-squared
-or a variance-explained must lie in [0, 1], a p-value in [0, 1], a factor loading
-or correlation in [-1, 1], a count must be a non-negative integer, a residual sum
-must be approximately zero, a coefficient must carry the sign you expected, an
-iterative procedure must report convergence, and a cluster centroid must fall
-within the observed range of its variable. Group checks cover cases that span
-several statistics, such as cluster sizes summing to N or a variance
-decomposition summing to one. The second kind is the spot-check: the harness
-recomputes a reported value directly from the raw data (a mean, sum, median, and
-so on, optionally filtered to a subgroup) and confirms the analysis's reported
-value matches. This is the step that catches an impossible number or an analysis
-that has quietly drifted away from its own source data.
+or a variance-explained (a proportion, not a percentage or eigenvalue) must lie
+in [0, 1], a p-value in [0, 1], a standardized factor loading or correlation in
+[-1, 1] (unstandardized loadings legitimately exceed 1, so declare
+`standardized: false` for them), a count must be a non-negative integer, and an
+iterative procedure must report convergence. A residual sum near zero is a
+property of OLS *with an intercept* only — not of GLM/logistic, no-intercept,
+WLS/GLS, or penalized fits — and its tolerance scales to the response magnitude
+when you declare a `column`, so a correct large-scale fit is not failed by
+floating-point accumulation. A coefficient with the wrong sign is reported as
+*informational* by default rather than failed, because a flipped sign is often
+the substantive finding (set `severity: fail` to harden it). A cluster centroid
+is checked against the observed range of its variable in the *analyzed* space
+(the prepared frame, if a `prepare()` step standardized the features). Group
+checks cover cases that span several statistics, such as cluster sizes summing to
+N or a variance decomposition summing to one. The second kind is the spot-check:
+the harness recomputes a reported value directly from the raw data (a mean, sum,
+median, standard deviation with a configurable `ddof`, and so on, optionally
+filtered to a subgroup) and confirms the analysis's reported value matches. This
+is the step that catches an impossible number or an analysis that has quietly
+drifted away from its own source data.
 
 ### Phase 4: Reproducibility
 
 The harness runs your Python analysis a second time and requires every statistic
-to come back exactly identical, not merely close. If you set a seed, both runs
-use it, so a stochastic procedure must reproduce once the seed is fixed. Any
-statistic that differs between the two runs, or that appears on one run but not
-the other, is flagged. This confirms the analysis is deterministic and free of
-hidden randomness or order-dependence, which is a precondition for anyone else
-being able to reproduce it.
+to come back essentially identical. The default tolerance is extremely tight
+(rtol = 1e-12) rather than bit-exact, so genuinely deterministic code is not
+failed when a multithreaded BLAS reduces sums in a slightly different order
+between two calls; set `reproducibility: {atol, rtol}` to change it, or pin
+`OMP_NUM_THREADS=1` for bit-for-bit equality. If you set a seed, both runs use
+it, so a stochastic procedure reproduces once the seed is fixed. Any statistic
+that drifts beyond tolerance, or appears on one run but not the other, is flagged
+(a NaN is treated as a failure, not as two runs "agreeing"). This tests
+determinism *within one process* — not reproducibility on a different machine,
+OS, or library build, which is what the word can connote — and a seed that fixes
+this same-tool re-run does *not* align random streams across Python and R.
 
 ### Phase 5: Cross-tool triangulation
 
@@ -139,8 +170,20 @@ statistic present in one tool but missing in the other is flagged. The result is
 a comparison table showing the Python value, the R value, the absolute
 difference, and whether they matched. If R is unavailable, or you pass
 `--skip-r`, or no R script is declared, the phase is skipped and reported as such
-rather than counted as a failure. The purpose is to prove a result is a property
-of the data and not an artifact of one tool's defaults.
+rather than counted as a failure.
+
+The purpose is to establish that a result is *implementation-independent*, not
+that it is correct. Two correctly-disagreeing tools (robust-SE variants, `ddof`
+or denominator conventions, factor contrast coding, optimizer defaults) can
+exceed the tolerance on a correct analysis, so read a mismatch as a question, not
+a verdict, and resist "fixing" sound code to satisfy a verifier. The comparison
+is also only meaningful for deterministic estimators: because Python and R use
+different random number generators, a shared seed does not produce the same
+random stream, so stochastic procedures (bootstrap, k-means initialization,
+permutation tests) will not match across tools even when both are right — compare
+their expectations within a sampling-error tolerance instead. Prefer triangulating
+a coefficient and its standard error over a p-value, which compresses the test
+statistic through a nonlinear tail and diverges near the boundary.
 
 ### Phase 6: Compiled log and methodology statement
 
@@ -158,7 +201,9 @@ so the whole run drops cleanly into a Makefile or CI step.
 ### The boundary
 
 Across all six phases the tool checks that numbers are consistent, reproducible,
-and tool-independent. It does not judge whether you chose the right model or
-whether a coefficient is substantively meaningful. That line is deliberate, and
-the verification log restates it at the end so the human judgment stays with the
-human.
+and tool-independent. It does not establish that they are *correct*: agreement
+across two implementations you both wrote cannot catch a shared specification
+error, and correct analyses can disagree for defensible reasons. And it does not
+judge whether you chose the right model or whether a coefficient is substantively
+meaningful. Those lines are deliberate, and the verification log restates them at
+the end so the human judgment stays with the human.

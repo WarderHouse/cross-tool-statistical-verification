@@ -14,6 +14,8 @@ cv_emit(list(
   coef_intercept = co["(Intercept)", "Estimate"],
   coef_wt        = co["wt", "Estimate"],
   coef_hp        = co["hp", "Estimate"],
+  se_wt          = co["wt", "Std. Error"],
+  se_hp          = co["hp", "Std. Error"],
   p_wt           = co["wt", "Pr(>|t|)"],
   p_hp           = co["hp", "Pr(>|t|)"],
   resid_sum      = sum(residuals(fit)),

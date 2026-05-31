@@ -27,12 +27,14 @@ class CheckResult:
 
 
 def is_close(a, b, atol: float = 1e-8, rtol: float = 1e-6, use_abs: bool = False) -> bool:
-    """True if a and b agree within atol + rtol*|b|.
+    """True if a and b agree within atol + rtol * max(|a|, |b|).
 
-    use_abs compares magnitudes only, which is what you want for quantities
-    whose sign is implementation-defined (e.g. PCA loadings, eigenvectors,
-    discriminant-function coefficients), where Python and R can legitimately
-    return the same result with opposite signs.
+    NaN never counts as agreement: a NaN almost always signals a broken
+    computation, not consensus, so two NaNs do not "match" and are not
+    "reproducible". Infinities compare by exact equality. use_abs compares
+    magnitudes only, for quantities whose sign is implementation-defined (PCA
+    loadings, eigenvectors, discriminant-function coefficients), where Python and
+    R may legitimately return the same result with opposite signs.
     """
     try:
         a = float(a)
@@ -40,10 +42,16 @@ def is_close(a, b, atol: float = 1e-8, rtol: float = 1e-6, use_abs: bool = False
     except (TypeError, ValueError):
         return False
     if math.isnan(a) or math.isnan(b):
-        return math.isnan(a) and math.isnan(b)
+        return False
     if use_abs:
         a, b = abs(a), abs(b)
-    return abs(a - b) <= atol + rtol * abs(b)
+    # Infinities compare by exact equality (+inf == +inf passes; +inf vs a finite
+    # value or -inf fails), consistent with the NaN policy above.
+    if math.isinf(a) or math.isinf(b):
+        return a == b
+    # Symmetric relative term anchored to max(|a|, |b|), so the cross-tool
+    # comparison does not depend on which result is named b.
+    return abs(a - b) <= atol + rtol * max(abs(a), abs(b))
 
 
 def tol_for(tolerance: dict, key: str):
@@ -71,4 +79,6 @@ def fmt(x) -> str:
         return "NaN"
     if xf == int(xf) and abs(xf) < 1e15:
         return str(int(xf))
-    return f"{xf:.6g}"
+    # Enough significant digits that two values which differ only at the 7th-8th
+    # digit (and a row that therefore FAILED) do not print as identical.
+    return f"{xf:.10g}"

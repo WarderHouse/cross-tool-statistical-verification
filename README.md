@@ -2,16 +2,23 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20448660.svg)](https://doi.org/10.5281/zenodo.20448660)
 
-Verify a statistical analysis the way a careful reviewer would: confirm the
+Check a statistical analysis the way a careful reviewer would: confirm the
 numbers are internally consistent, reproduce identically on a second run, and
 **agree with an independent implementation in another tool**. `crossverify` runs
 your analysis through a documented six-phase protocol and writes the evidence —
 a verification log, a Python-vs-R comparison table, and a methodology statement
 you can adapt for a manuscript.
 
+It establishes that a result is **implementation-independent**, not that it is
+correct. Agreement across Python and R is strong evidence that a number is not an
+artifact of one library's defaults. It is *not* proof the analysis is right — you
+write both sides, so a shared specification error agrees perfectly — and correct
+analyses can legitimately disagree for defensible reasons (robust-SE variants,
+`ddof`/denominator choices, contrast coding). See
+[Scope](#scope-what-this-does-and-does-not-establish) for the limits.
+
 Built for researchers who use AI assistance to write analysis code and need to
-demonstrate to editors, reviewers, and co-authors that the results are real and
-reproducible.
+show editors, reviewers, and co-authors that their results hold up.
 
 **Try it in your browser:** a [live demo](https://olivercrocco.shinyapps.io/ctsv-demo/)
 runs the verification on the mtcars example and lets you watch the cross-tool check
@@ -24,8 +31,8 @@ catch a bug. Its source is in [demo/](demo/).
 | 1. Data intake | Shape, dtypes, missing-value counts, descriptives, and category frequencies of the data **as loaded**, so you can confirm it matches your raw file. |
 | 2. Transformations | If your analysis declares a `prepare()` step, a before/after snapshot plus range and integrity checks. |
 | 3. Consistency + spot-checks | Every reported statistic is checked to be the kind of number it claims to be (R² in [0, 1], a p-value in [0, 1], a loading in [-1, 1], residuals summing to ~0, a coefficient of the expected sign), and selected values are **recomputed directly from the raw data**. |
-| 4. Reproducibility | The analysis is re-run and every statistic must come back **identical** (deterministic), or identical once a seed is fixed (stochastic). |
-| 5. Cross-tool triangulation | Your results are compared, statistic by statistic, against an **independent R implementation**. This is the step that catches results which are artifacts of one tool's defaults. |
+| 4. Reproducibility | The analysis is re-run and every statistic must come back **essentially identical** (a tight tolerance, so deterministic code isn't failed by last-ULP BLAS drift). Tests determinism within one process, not cross-machine reproducibility. |
+| 5. Cross-tool triangulation | Your results are compared, statistic by statistic, against an **independent R implementation**, within tolerance. Catches artifacts of one tool's defaults — and is meaningful only for deterministic estimators (a shared seed does not align Python's and R's RNG streams). |
 | 6. Report | A compiled verification log, a comparison table, a machine-readable JSON, and a methodology-statement paragraph. |
 
 For a step-by-step description of each phase, as a brief overview and in
@@ -63,11 +70,11 @@ crossverify 0.1.0 — OLS regression: mpg ~ wt + hp (mtcars)
   Phase 1 intake           3 info
   Phase 2 transforms       1 info
   Phase 3 consistency      8 pass
-  Phase 4 reproducibility  9 pass
-  Phase 5 triangulation    9 pass
-  Cross-tool: 9/9 statistics matched within tolerance.
+  Phase 4 reproducibility  11 pass
+  Phase 5 triangulation    11 pass
+  Cross-tool: 11/11 statistics matched within tolerance.
 
-Result: PASS (26 passed, 0 failed, 4 informational)
+Result: PASS (30 passed, 0 failed, 4 informational)
 ```
 
 The Python-vs-R comparison it writes:
@@ -141,12 +148,17 @@ Start your own with `python -m crossverify --init my_study/`.
 
 ### Consistency check kinds
 
-`r_squared`, `p_value`, `proportion`, `variance_explained` (each in their natural
-range); `loading`, `correlation` (in [-1, 1]); `count` (optionally `equals: N`);
-`coefficient` (with `expected_sign: positive|negative|nonzero`); `residual_sum`
-(near zero); `converged`; and `centroid` (within the observed range of a named
-`column`). Group checks (`sum_to_n`, `sum_to_one`, `sum_le_one`) cover cluster
-sizes and variance decompositions.
+`r_squared`, `p_value`, `proportion`, `variance_explained` (a proportion in
+[0, 1], not a percentage or eigenvalue); `correlation` and standardized `loading`
+(in [-1, 1]; pass `standardized: false` for covariance-based/unstandardized
+loadings); `count` (optionally `equals: N`); `coefficient` (with `expected_sign` —
+a mismatch is **informational** by default, since a flipped sign is often the
+finding; set `severity: fail` to harden it); `residual_sum` (the
+OLS-with-intercept "sums to ~0" property — declare a `column` so the tolerance
+scales to the response and it doesn't false-fail on large-scale data);
+`converged`; and `centroid` (within the observed range of a named `column`, in
+the analyzed/prepared space). Group checks (`sum_to_n`, `sum_to_one`,
+`sum_le_one`) cover cluster sizes and variance decompositions.
 
 ## Outputs
 
@@ -171,22 +183,44 @@ python -m crossverify --project analysis/project.yaml || exit 1
 - **Sign-flipped quantities.** PCA loadings and eigenvectors have an arbitrary
   sign that can differ between Python and R. Set `abs: true` on a statistic's
   tolerance to compare magnitudes only.
-- **Stochastic analyses.** Set `seed:` in the project file. The harness passes it
-  to both `run(df, seed=...)` and the R side (via `cv_args()`, which calls
-  `set.seed()` for you), so re-runs and cross-tool comparison are deterministic.
+- **Stochastic analyses.** Set `seed:` in the project file; the harness passes it
+  to both `run(df, seed=...)` and the R side. A seed makes a **same-tool re-run**
+  (Phase 4) reproducible, but Python and R use **different RNGs**, so a shared
+  seed does *not* produce the same random stream across tools. Phase 5 cross-tool
+  comparison is meaningful only for **deterministic** estimators (or for
+  expectations compared within a sampling-error tolerance), not seed-matched
+  random draws. Compare a coefficient and its standard error rather than a
+  p-value, which diverges near the boundary on small SE/df-convention differences.
 - **No R installed.** Use `--skip-r` to run phases 1-4 and 6. Phase 5 reports as
   skipped rather than failing.
 - **Data format.** The harness reads your dataset as CSV (both the Python and R
   sides load it for intake and spot-checks). Convert SPSS, Stata, or Excel
   sources to CSV first, which is good practice for a reproducibility package
   anyway.
+- **Parsing differences.** pandas `read_csv` and R's `read.csv` can infer types,
+  decimal marks, and NA tokens differently, so a Phase 5 mismatch can originate in
+  *parsing* rather than the analysis. The Phase 1 intake summary reflects the
+  Python side; if a statistic mismatches unexpectedly, confirm both tools parsed
+  the column the same way.
 
-## What it does not do
+## Scope: what this does and does not establish
 
-It checks that numbers are consistent, reproducible, and tool-independent. It
-does **not** judge whether a model is the right model or whether a coefficient is
-substantively meaningful. The verification log ends with a short checklist of
-the judgments that remain yours.
+It checks that numbers are internally consistent, reproducible within a process,
+and **tool-independent**. Three limits matter:
+
+- **Agreement is not correctness (not sufficient).** You write both
+  implementations, so a shared specification error (wrong model, wrong variable,
+  a biased estimator chosen on both sides) produces perfect agreement that
+  certifies the mistake. Python and R also often share the same LAPACK/BLAS
+  kernel. The tool measures implementation-independence, not validity.
+- **Disagreement is not always error (not necessary).** Correct analyses
+  legitimately differ past a tight tolerance — HC/HAC robust SEs, `ddof`
+  conventions, factor contrast coding, tie handling, optimizer defaults. Treat a
+  Phase 5 mismatch as a prompt to understand *why*; do not "fix" correct code by
+  forcing one tool to mimic the other's convention.
+- **It does not judge the model.** Whether the specification is appropriate, or a
+  coefficient is substantively meaningful, remains your call. The verification log
+  ends with a short checklist of the judgments that stay with you.
 
 ## Tests
 

@@ -13,7 +13,8 @@ from pathlib import Path
 from . import __version__, consistency, intake, reproduce, report, transforms, triangulate
 from .checks import CheckResult
 from .config import Project
-from .runner import (load_adapter, load_data, r_available, r_version, run_python, run_r)
+from .runner import (call_with_optional_seed, load_adapter, load_data,
+                     r_available, r_version, run_python, run_r)
 
 PKG_ROOT = Path(__file__).resolve().parent.parent
 HELPER_R = PKG_ROOT / "r" / "crossverify.R"
@@ -59,7 +60,17 @@ def main(argv=None):
     all_results = []
     intake_artifacts = {}
     comparison_rows = []
-    ranges = intake.numeric_ranges(df)
+
+    # Consistency checks compare against the *analyzed* data: if the analysis
+    # declares a prepare() step (e.g. standardization before clustering), derive
+    # ranges/scales from the prepared frame, not the raw one.
+    analyzed = df
+    prep = getattr(adapter, "prepare", None)
+    if callable(prep):
+        analyzed = call_with_optional_seed(prep, df.copy(), project.seed)
+    ranges = intake.numeric_ranges(analyzed)
+    data_scales = {c: float(analyzed[c].abs().sum())
+                   for c in analyzed.select_dtypes("number").columns}
 
     if 1 in phases:
         res, intake_artifacts = intake.inspect(df)
@@ -75,13 +86,13 @@ def main(argv=None):
         py_results = run_python(adapter, df, project.seed)
 
     if 3 in phases:
-        all_results += consistency.consistency_checks(py_results, project, ranges)
+        all_results += consistency.consistency_checks(py_results, project, ranges, data_scales)
         all_results += consistency.group_checks(py_results, project, len(df))
         all_results += consistency.spot_checks(py_results, project, df)
 
     if 4 in phases:
         py_results_2 = run_python(adapter, df, project.seed)
-        all_results += reproduce.reproducibility(py_results, py_results_2)
+        all_results += reproduce.reproducibility(py_results, py_results_2, project.reproducibility)
 
     rver = "not run"
     if 5 in phases:

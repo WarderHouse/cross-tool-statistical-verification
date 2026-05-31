@@ -21,6 +21,7 @@ class Project:
     transform_checks: list = field(default_factory=list)
     tolerance: dict = field(default_factory=dict)
     metadata: dict = field(default_factory=dict)
+    reproducibility: dict = field(default_factory=dict)
 
     @classmethod
     def load(cls, path) -> "Project":
@@ -58,6 +59,7 @@ class Project:
             transform_checks=spec.get("transform_checks") or [],
             tolerance=tol,
             metadata=spec.get("metadata") or {},
+            reproducibility=spec.get("reproducibility") or {},
         )
 
     def validate(self) -> list:

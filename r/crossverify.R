@@ -9,7 +9,12 @@
 cv_args <- function() {
   a <- commandArgs(trailingOnly = TRUE)
   seed <- if (length(a) >= 3 && nzchar(a[3])) as.integer(a[3]) else NA_integer_
-  if (!is.na(seed)) set.seed(seed)   # match the Python seed for reproducibility
+  # NOTE: this seeds THIS R session's RNG, but R and Python use different random
+  # number generators, so a shared integer seed does NOT produce the same random
+  # stream across the two tools. Cross-tool (Phase 5) comparison is therefore
+  # meaningful only for deterministic estimators, not seed-matched random draws.
+  # (A seed does make a same-tool re-run, Phase 4, reproducible.)
+  if (!is.na(seed)) set.seed(seed)
   list(data = a[1], out = a[2], seed = seed)
 }
 
