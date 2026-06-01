@@ -13,7 +13,8 @@ from pathlib import Path
 from . import __version__, consistency, intake, reproduce, report, transforms, triangulate
 from .checks import CheckResult
 from .config import Project
-from .runner import (load_adapter, load_data, r_available, r_version, run_python, run_r)
+from .runner import (call_with_optional_seed, load_adapter, load_data,
+                     r_available, r_version, run_python, run_r)
 
 PKG_ROOT = Path(__file__).resolve().parent.parent
 HELPER_R = PKG_ROOT / "r" / "crossverify.R"
@@ -59,29 +60,45 @@ def main(argv=None):
     all_results = []
     intake_artifacts = {}
     comparison_rows = []
-    ranges = intake.numeric_ranges(df)
+
+    # If the analysis declares a prepare() step, it is the single source of truth
+    # for the "analyzed" frame: the Phase-2 snapshot, the Phase-3 consistency
+    # ranges/scales, and the frame handed to run() all derive from it, so they
+    # cannot drift into different spaces. prepare() is called at most once, and
+    # only when a phase actually needs it (never for an intake-only run).
+    prepare = getattr(adapter, "prepare", None)
+    prepared = None
+    if callable(prepare) and (phases & {2, 3, 4, 5}):
+        prepared = call_with_optional_seed(prepare, df.copy(), project.seed)
+    analyzed = prepared if prepared is not None else df
 
     if 1 in phases:
         res, intake_artifacts = intake.inspect(df)
         all_results += res
 
     if 2 in phases:
-        res, _ = transforms.run_phase(adapter, df, project)
+        res, _ = transforms.run_phase(adapter, df, project, prepared=prepared)
         all_results += res
 
-    # Phases 3-5 all need the Python analysis result.
+    # Phases 3-5 all need the Python analysis result, computed on the analyzed
+    # frame so the statistics and the consistency ranges share one space.
     py_results = None
     if phases & {3, 4, 5}:
-        py_results = run_python(adapter, df, project.seed)
+        py_results = run_python(adapter, analyzed, project.seed)
 
     if 3 in phases:
-        all_results += consistency.consistency_checks(py_results, project, ranges)
+        ranges = intake.numeric_ranges(analyzed)
+        data_scales = {c: float(analyzed[c].abs().sum())
+                       for c in analyzed.select_dtypes("number").columns}
+        all_results += consistency.consistency_checks(py_results, project, ranges, data_scales)
         all_results += consistency.group_checks(py_results, project, len(df))
+        # Spot-checks recompute against the raw, as-loaded data on purpose: an
+        # independent sanity check against the original source, not the prepared frame.
         all_results += consistency.spot_checks(py_results, project, df)
 
     if 4 in phases:
-        py_results_2 = run_python(adapter, df, project.seed)
-        all_results += reproduce.reproducibility(py_results, py_results_2)
+        py_results_2 = run_python(adapter, analyzed, project.seed)
+        all_results += reproduce.reproducibility(py_results, py_results_2, project.reproducibility)
 
     rver = "not run"
     if 5 in phases:

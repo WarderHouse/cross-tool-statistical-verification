@@ -49,10 +49,10 @@ ui <- fluidPage(
   titlePanel("cross-tool-statistical-verification — live demo"),
   p(class = "muted",
     "A walk-through of the bundled mtcars example: an OLS regression ",
-    tags$code("mpg ~ wt + hp"), " verified across Python and R. The Python column is the ",
-    "verified output of ", tags$code("analysis.py"), " (statsmodels); the R column is computed ",
+    tags$code("mpg ~ wt + hp"), " compared across Python and R. The Python column is the ",
+    "reference output of ", tags$code("analysis.py"), " (statsmodels); the R column is computed ",
     "live. ",
-    tags$a(href = "https://github.com/olivercrocco/cross-tool-statistical-verification",
+    tags$a(href = "https://github.com/WarderHouse/cross-tool-statistical-verification",
            "View the tool on GitHub", target = "_blank")),
   sidebarLayout(
     sidebarPanel(
@@ -86,7 +86,11 @@ ui <- fluidPage(
           uiOutput("verdict"), br(),
           downloadButton("dl", "Download verification log"))
     )
-  )
+  ),
+  p(class = "muted", style = "margin-top:24px; padding-top:16px; border-top:1px solid #e7e2da;",
+    "Agreement means the result is implementation-independent, not necessarily ",
+    "correct: you write both sides, so a shared mistake would agree too. The demo ",
+    "shows what cross-tool checking can and cannot catch.")
 )
 
 server <- function(input, output, session) {
@@ -158,7 +162,7 @@ server <- function(input, output, session) {
     pass <- overall_pass(s$cmp, s$cons, s$repro)
     div(class = paste("verdict", if (pass) "pass" else "fail"),
         if (pass)
-          sprintf("PASS — all %d statistics matched within tolerance; the result is verified across tools.", total)
+          sprintf("PASS — all %d statistics matched within tolerance; the two implementations agree (the result is independent of either tool's defaults).", total)
         else
           sprintf("FAIL — %d of %d statistics matched. The implementations disagree; see Phase 5.", matched, total))
   })
