@@ -61,10 +61,13 @@ uv sync                      # PyYAML, pandas, statsmodels + dev tools
 ```
 
 `uv sync` creates a local virtual environment and installs from the committed
-`uv.lock`, so installs are byte-reproducible. Run commands through it with
-`uv run` (for example `uv run crossverify --project examples/project.yaml`), or
-activate the environment with `source .venv/bin/activate`. If you do not use uv,
-`pip install -e .` installs the same dependencies from `pyproject.toml`.
+`uv.lock`, so installs are byte-reproducible. The canonical way to run the tool
+is `uv run crossverify ...` (used throughout this README). Equivalent
+alternatives: `crossverify ...` in an activated environment
+(`source .venv/bin/activate`), or `python -m crossverify ...` to run from a
+checkout without installing. If you do not use uv, `pip install -e .` installs
+the runtime dependencies from `pyproject.toml` (the `dev` group, e.g. `pytest`,
+is installed by `uv sync` but not by `pip install -e .`).
 
 The cross-tool phase additionally needs **R** on your PATH with the `jsonlite`
 package (`install.packages("jsonlite")`). Everything else runs without R; use

@@ -8,6 +8,8 @@
 
 import argparse
 import sys
+from contextlib import ExitStack
+from importlib import resources
 from pathlib import Path
 
 from . import __version__, consistency, intake, reproduce, report, transforms, triangulate
@@ -15,9 +17,10 @@ from .checks import CheckResult
 from .config import Project
 from .runner import (load_adapter, load_data, r_available, r_version, run_python, run_r)
 
-PKG_ROOT = Path(__file__).resolve().parent.parent
-HELPER_R = PKG_ROOT / "r" / "crossverify.R"
-TEMPLATE = PKG_ROOT / "templates" / "methodology_statement.md"
+# Runtime data files ship inside the package (crossverify/crossverify.R and
+# crossverify/methodology_statement.md) and are resolved via importlib.resources
+# so they are found whether running from a checkout or an installed wheel.
+TEMPLATE = resources.files(__package__) / "methodology_statement.md"
 ALL_PHASES = [1, 2, 3, 4, 5, 6]
 
 
@@ -97,7 +100,13 @@ def main(argv=None):
                                            "Cross-tool triangulation", None,
                                            "skipped: Rscript not found on PATH"))
         else:
-            r_results, _ = run_r(project.r_script, project.data_path, project.seed, HELPER_R)
+            # The R helper must be a concrete file on disk for the subprocess.
+            # importlib.resources.as_file materializes it (extracting from a zip
+            # if needed); the ExitStack keeps it alive for the run_r call.
+            with ExitStack() as stack:
+                helper_r = stack.enter_context(
+                    resources.as_file(resources.files(__package__) / "crossverify.R"))
+                r_results, _ = run_r(project.r_script, project.data_path, project.seed, helper_r)
             rver = r_version()
             checks, comparison_rows = triangulate.triangulate(py_results, r_results, project.tolerance)
             all_results += checks

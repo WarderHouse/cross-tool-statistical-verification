@@ -9,7 +9,7 @@ harness confirms the two agree.
 Run it from the repository root:
 
 ```bash
-python -m crossverify --project examples/project.yaml
+uv run crossverify --project examples/project.yaml
 ```
 
 Outputs land in `crossverify_out/project/`:

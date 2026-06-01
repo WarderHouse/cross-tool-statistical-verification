@@ -58,7 +58,13 @@ def _methodology(project, env, comparison_rows, template_path):
         "tolerance_desc": tol_desc,
         "tool_version": __version__,
     }
-    return _render(Path(template_path).read_text(), fields)
+    # template_path may be an importlib.resources Traversable (which has its own
+    # read_text) or a filesystem path/str (wrap in Path). Handle both.
+    if hasattr(template_path, "read_text"):
+        template_text = template_path.read_text()
+    else:
+        template_text = Path(template_path).read_text()
+    return _render(template_text, fields)
 
 
 def _render(template_text, fields):

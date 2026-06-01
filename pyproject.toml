@@ -63,3 +63,10 @@ path = "crossverify/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["crossverify"]
+# Ship the non-Python runtime data files (R helper + methodology template) that
+# live inside the package; without this hatchling would include only .py files,
+# and Phase 5 / Phase 6 would break in a built wheel.
+artifacts = [
+    "crossverify/crossverify.R",
+    "crossverify/methodology_statement.md",
+]
