@@ -54,9 +54,17 @@ environment (no inherited tokens or credentials).
 
 ## Install
 
+This project uses [uv](https://docs.astral.sh/uv/). From a checkout:
+
 ```bash
-pip install -r requirements.txt    # PyYAML + pandas (statsmodels for the example)
+uv sync                      # PyYAML, pandas, statsmodels + dev tools
 ```
+
+`uv sync` creates a local virtual environment and installs from the committed
+`uv.lock`, so installs are byte-reproducible. Run commands through it with
+`uv run` (for example `uv run crossverify --project examples/project.yaml`), or
+activate the environment with `source .venv/bin/activate`. If you do not use uv,
+`pip install -e .` installs the same dependencies from `pyproject.toml`.
 
 The cross-tool phase additionally needs **R** on your PATH with the `jsonlite`
 package (`install.packages("jsonlite")`). Everything else runs without R; use
@@ -68,7 +76,7 @@ Run the worked example — an OLS regression (`mpg ~ wt + hp`) implemented in bo
 Python and R on the public-domain `mtcars` dataset:
 
 ```bash
-python -m crossverify --project examples/project.yaml
+uv run crossverify --project examples/project.yaml
 ```
 
 ```
@@ -150,7 +158,7 @@ tolerance:
   default_rtol: 1.0e-6
 ```
 
-Start your own with `python -m crossverify --init my_study/`.
+Start your own with `uv run crossverify --init my_study/`.
 
 ### Consistency check kinds
 
@@ -176,7 +184,7 @@ Written to `crossverify_out/<project>/` (git-ignored):
 drops into a Makefile or CI step:
 
 ```bash
-python -m crossverify --project analysis/project.yaml || exit 1
+uv run crossverify --project analysis/project.yaml || exit 1
 ```
 
 ## Notes and gotchas
@@ -204,7 +212,7 @@ the judgments that remain yours.
 ## Tests
 
 ```bash
-python tests/test_checks.py     # or: python -m pytest
+uv run pytest                   # or a single file: uv run python tests/test_checks.py
 ```
 
 ## License
