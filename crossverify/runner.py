@@ -20,7 +20,10 @@ def load_adapter(module_path):
     """Import a Python analysis module from a file path.
 
     The module must define ``run(df, seed=None) -> dict`` and may define
-    ``prepare(df, seed=None) -> DataFrame``.
+    ``prepare(df, seed=None) -> DataFrame``. When ``prepare`` is declared, cli
+    runs it once and hands its output to ``run`` (and to the Phase-3 consistency
+    ranges), so the statistics and the checks share one data space; without it,
+    ``run`` receives the raw data as loaded.
     """
     module_path = Path(module_path)
     spec = importlib.util.spec_from_file_location(f"crossverify_adapter_{module_path.stem}",

@@ -11,7 +11,10 @@ from .checks import CheckResult, fmt
 from .runner import call_with_optional_seed
 
 
-def run_phase(adapter, df, project):
+def run_phase(adapter, df, project, prepared=None):
+    """Phase 2. ``prepared`` may be supplied by the caller (cli.main computes it
+    once and reuses it here) to avoid invoking prepare() a second time; if it is
+    None and the adapter declares prepare(), this function calls it."""
     results = []
     prepare = getattr(adapter, "prepare", None)
 
@@ -21,7 +24,8 @@ def run_phase(adapter, df, project):
             "No prepare() declared; the analysis consumes the raw dataset as loaded."))
         return results, df
 
-    prepared = call_with_optional_seed(prepare, df.copy(), project.seed)
+    if prepared is None:
+        prepared = call_with_optional_seed(prepare, df.copy(), project.seed)
     results.append(CheckResult(
         "2", "transform:shape", "Shape after prepare()", None,
         f"{df.shape[0]}x{df.shape[1]} -> {prepared.shape[0]}x{prepared.shape[1]}"))

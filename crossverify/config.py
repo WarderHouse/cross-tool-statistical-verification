@@ -34,6 +34,7 @@ class Project:
     transform_checks: list = field(default_factory=list)
     tolerance: dict = field(default_factory=dict)
     metadata: dict = field(default_factory=dict)
+    reproducibility: dict = field(default_factory=dict)
     # When False (default), data/python.module/r.script must resolve inside the
     # project folder; set true in the project file to permit out-of-tree paths.
     allow_external_paths: bool = False
@@ -74,6 +75,7 @@ class Project:
             transform_checks=spec.get("transform_checks") or [],
             tolerance=tol,
             metadata=spec.get("metadata") or {},
+            reproducibility=spec.get("reproducibility") or {},
             allow_external_paths=bool(spec.get("allow_external_paths", False)),
         )
 

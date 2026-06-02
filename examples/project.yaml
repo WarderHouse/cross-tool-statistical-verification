@@ -13,9 +13,9 @@ checks:
   model_r2:   {kind: r_squared}
   p_wt:       {kind: p_value}
   p_hp:       {kind: p_value}
-  coef_wt:    {kind: coefficient, expected_sign: negative}   # heavier cars: lower mpg
+  coef_wt:    {kind: coefficient, expected_sign: negative}   # heavier cars: lower mpg (INFO, not FAIL, if it flips)
   coef_hp:    {kind: coefficient, expected_sign: negative}   # more power: lower mpg
-  resid_sum:  {kind: residual_sum}                           # OLS residuals sum to ~0
+  resid_sum:  {kind: residual_sum, column: mpg}              # OLS-with-intercept property; tolerance scales to |mpg|
 
 # Phase 3 — recompute a reported value directly from the raw data.
 spot_checks:
@@ -23,7 +23,10 @@ spot_checks:
     op: mean
     column: mpg
 
-# Phase 5 — cross-tool comparison tolerances.
+# Phase 5 compares every emitted statistic. Coefficients and their standard
+# errors (coef_*, se_*) are a stronger cross-tool target than p-values, which
+# squeeze the test statistic through a nonlinear tail and can diverge near the
+# boundary on small SE or df-convention differences.
 tolerance:
   default_atol: 1.0e-8
   default_rtol: 1.0e-6
