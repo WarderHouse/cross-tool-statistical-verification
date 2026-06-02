@@ -8,6 +8,10 @@ venv/
 # Generated verification outputs
 crossverify_out/
 
+# Build artifacts (uv build / python -m build)
+dist/
+*.egg-info/
+
 # Your real studies are private — keep them here and they stay out of git.
 # (The committed examples/ project is the only one tracked.)
 projects/

@@ -1,6 +1,0 @@
-# Core harness — pinned to compatible ranges for reproducible installs.
-PyYAML>=6,<7
-pandas>=2,<3
-
-# Needed only to run the worked example in examples/ (OLS regression)
-statsmodels>=0.14,<1

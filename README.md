@@ -61,9 +61,20 @@ environment (no inherited tokens or credentials).
 
 ## Install
 
+This project uses [uv](https://docs.astral.sh/uv/). From a checkout:
+
 ```bash
-pip install -r requirements.txt    # PyYAML + pandas (statsmodels for the example)
+uv sync                      # PyYAML, pandas, statsmodels + dev tools
 ```
+
+`uv sync` creates a local virtual environment and installs from the committed
+`uv.lock`, so installs are byte-reproducible. The canonical way to run the tool
+is `uv run crossverify ...` (used throughout this README). Equivalent
+alternatives: `crossverify ...` in an activated environment
+(`source .venv/bin/activate`), or `python -m crossverify ...` to run from a
+checkout without installing. If you do not use uv, `pip install -e .` installs
+the runtime dependencies from `pyproject.toml` (the `dev` group, e.g. `pytest`,
+is installed by `uv sync` but not by `pip install -e .`).
 
 The cross-tool phase additionally needs **R** on your PATH with the `jsonlite`
 package (`install.packages("jsonlite")`). Everything else runs without R; use
@@ -75,7 +86,7 @@ Run the worked example — an OLS regression (`mpg ~ wt + hp`) implemented in bo
 Python and R on the public-domain `mtcars` dataset:
 
 ```bash
-python -m crossverify --project examples/project.yaml
+uv run crossverify --project examples/project.yaml
 ```
 
 ```
@@ -166,7 +177,7 @@ tolerance:
   default_rtol: 1.0e-6
 ```
 
-Start your own with `python -m crossverify --init my_study/`.
+Start your own with `uv run crossverify --init my_study/`.
 
 ### Consistency check kinds
 
@@ -197,7 +208,7 @@ Written to `crossverify_out/<project>/` (git-ignored):
 drops into a Makefile or CI step:
 
 ```bash
-python -m crossverify --project analysis/project.yaml || exit 1
+uv run crossverify --project analysis/project.yaml || exit 1
 ```
 
 ## Notes and gotchas
@@ -261,39 +272,8 @@ and **tool-independent**. Three limits matter:
 ## Tests
 
 ```bash
-python tests/test_checks.py     # or: python -m pytest
+uv run pytest                   # or a single file: uv run python tests/test_checks.py
 ```
-
-## Installing uv
-
-[uv](https://docs.astral.sh/uv/) is a fast Python package manager. Install **uv
-itself first**, then use it to set up `crossverify`'s environment.
-
-Install uv (pick one):
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh   # macOS / Linux
-pipx install uv                                    # via pipx
-brew install uv                                    # macOS (Homebrew)
-```
-
-On Windows (PowerShell):
-
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-Then create an environment and install the dependencies:
-
-```bash
-uv venv
-uv pip install -r requirements.txt
-```
-
-> Packaging is migrating from `requirements.txt` to a uv-native `pyproject.toml`
-> + `uv.lock` (see [#5](https://github.com/WarderHouse/cross-tool-statistical-verification/issues/5)).
-> Until that lands, `uv pip install -r requirements.txt` works today; afterward
-> this becomes `uv sync`.
 
 ## License
 

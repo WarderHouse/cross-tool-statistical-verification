@@ -1,0 +1,72 @@
+[project]
+name = "crossverify"
+dynamic = ["version"]
+description = "A six-phase verification harness for statistical analysis, with Python-vs-R cross-tool triangulation."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Oliver S. Crocco" },
+]
+keywords = [
+    "reproducibility",
+    "computational reproducibility",
+    "statistical analysis",
+    "verification",
+    "cross-tool triangulation",
+    "Python",
+    "R",
+    "open science",
+    "research software",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
+
+# Pinned to the same compatible ranges the retired requirements.txt used,
+# so installs stay reproducible.
+dependencies = [
+    "PyYAML>=6,<7",
+    "pandas>=2,<3",
+    "statsmodels>=0.14,<1",
+]
+
+[project.scripts]
+crossverify = "crossverify.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/WarderHouse/cross-tool-statistical-verification"
+Repository = "https://github.com/WarderHouse/cross-tool-statistical-verification"
+
+[dependency-groups]
+# Development tooling, installed by default with `uv sync`.
+dev = [
+    "pytest>=8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+# Single source of truth: crossverify/__init__.py's __version__.
+path = "crossverify/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["crossverify"]
+# Ship the non-Python runtime data files (R helper + methodology template) that
+# live inside the package; without this hatchling would include only .py files,
+# and Phase 5 / Phase 6 would break in a built wheel.
+artifacts = [
+    "crossverify/crossverify.R",
+    "crossverify/methodology_statement.md",
+]

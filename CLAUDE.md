@@ -35,7 +35,7 @@ Do not reintroduce "the numbers are real / this proves correctness" framing.
 | 6 Report | `report.py` | verification log, comparison table, methodology statement |
 
 Also `checks.py` (`is_close` + numeric helpers), `config.py` (project YAML), `cli.py`
-(orchestration), `r/crossverify.R` (R helper: `cv_args()` / `cv_emit()`).
+(orchestration), `crossverify/crossverify.R` (R helper: `cv_args()` / `cv_emit()`).
 
 **The contract:** the user supplies a Python adapter exposing `run(df, seed=None) -> dict`
 of named statistics (optionally `prepare(df, seed=None)`), an R script that emits the same
@@ -44,8 +44,8 @@ names via `cv_emit()`, and a `project.yaml` declaring the checks. See `examples/
 ## Running and testing
 
 ```bash
-python -m pytest                                         # or: python tests/test_checks.py
-python -m crossverify --project examples/project.yaml    # must report PASS
+uv run pytest                                        # or: uv run python tests/test_checks.py
+uv run crossverify --project examples/project.yaml   # must report PASS
 ```
 
 Every change must keep the unit tests green AND the mtcars example PASSing. Add a test in
@@ -55,8 +55,8 @@ Every change must keep the unit tests green AND the mtcars example PASSing. Add 
 ## Conventions & constraints
 
 - **Runs entirely locally:** no network calls, no AI/LLM, no telemetry. Keep it that way.
-- **Dependency-light:** core is `pandas` + `PyYAML`; `statsmodels` is only for the example.
-  Keep ranges pinned in `requirements.txt`; don't add heavy or networked dependencies.
+- **Dependency-light:** core is `pandas` + `PyYAML`; `statsmodels` is a declared runtime dependency, imported only by the worked example.
+  Keep version ranges pinned in `pyproject.toml`; don't add heavy or networked dependencies.
 - **Trust boundary:** a project file is executable code (the harness imports the Python
   module and `Rscript`-runs the R script) and data is parsed locally. The README "Trust
   boundary" section and the `allow_external_paths` containment guard exist for this — keep
@@ -77,4 +77,4 @@ Every change must keep the unit tests green AND the mtcars example PASSing. Add 
 
 ## Layout
 `crossverify/` (package) · `examples/` (worked mtcars example) · `demo/` (R Shiny demo) ·
-`docs/PROTOCOL.md` (two-tier explainer) · `r/crossverify.R` · `tests/`.
+`docs/PROTOCOL.md` (two-tier explainer) · `crossverify/crossverify.R` · `tests/`.
