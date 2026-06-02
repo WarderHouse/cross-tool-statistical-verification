@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -25,9 +24,9 @@ class Project:
     analysis_name: str
     data_path: Path
     base_dir: Path
-    seed: Optional[int] = None
-    python_module: Optional[Path] = None
-    r_script: Optional[Path] = None
+    seed: int | None = None
+    python_module: Path | None = None
+    r_script: Path | None = None
     checks: dict = field(default_factory=dict)
     group_checks: list = field(default_factory=list)
     spot_checks: list = field(default_factory=list)
@@ -91,12 +90,15 @@ class Project:
         if self.r_script and not self.r_script.exists():
             problems.append(f"r script declared but not found: {self.r_script}")
         if not self.allow_external_paths:
-            for label, p in (("data", self.data_path),
-                             ("python.module", self.python_module),
-                             ("r.script", self.r_script)):
+            for label, p in (
+                ("data", self.data_path),
+                ("python.module", self.python_module),
+                ("r.script", self.r_script),
+            ):
                 if p and not _within_base(p, self.base_dir):
                     problems.append(
                         f"{label} resolves outside the project folder: "
                         f"{Path(p).resolve()} (set 'allow_external_paths: true' in "
-                        f"the project file to permit this)")
+                        f"the project file to permit this)"
+                    )
         return problems

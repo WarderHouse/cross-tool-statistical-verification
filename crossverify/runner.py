@@ -26,8 +26,9 @@ def load_adapter(module_path):
     ``run`` receives the raw data as loaded.
     """
     module_path = Path(module_path)
-    spec = importlib.util.spec_from_file_location(f"crossverify_adapter_{module_path.stem}",
-                                                  str(module_path))
+    spec = importlib.util.spec_from_file_location(
+        f"crossverify_adapter_{module_path.stem}", str(module_path)
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -52,8 +53,10 @@ def _coerce(mapping):
         try:
             coerced[str(k)] = _to_num(v)
         except (TypeError, ValueError):
-            raise ValueError(f"statistic '{k}' is not numeric (got {v!r}); "
-                             "the harness verifies numbers, so emit scalars only.")
+            raise ValueError(
+                f"statistic '{k}' is not numeric (got {v!r}); "
+                "the harness verifies numbers, so emit scalars only."
+            ) from None
     return coerced
 
 
@@ -69,8 +72,16 @@ def run_python(adapter, df, seed):
 # Variables the R child legitimately needs; everything else in the parent
 # environment (tokens, cloud credentials, etc.) is withheld from the
 # user-supplied R script. R_* / LC_* families are matched by prefix below.
-_R_ENV_ALLOW = ("PATH", "HOME", "LANG", "LC_ALL", "TZ", "TMPDIR",
-                "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH")
+_R_ENV_ALLOW = (
+    "PATH",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "TZ",
+    "TMPDIR",
+    "LD_LIBRARY_PATH",
+    "DYLD_LIBRARY_PATH",
+)
 
 
 def _r_child_env(helper_path):
@@ -80,8 +91,7 @@ def _r_child_env(helper_path):
     holds are not exposed to the user-supplied R script, then points
     CROSSVERIFY_R at the helper library.
     """
-    env = {k: v for k, v in os.environ.items()
-           if k in _R_ENV_ALLOW or k.startswith(("R_", "LC_"))}
+    env = {k: v for k, v in os.environ.items() if k in _R_ENV_ALLOW or k.startswith(("R_", "LC_"))}
     env["CROSSVERIFY_R"] = str(helper_path)
     return env
 
@@ -110,13 +120,19 @@ def run_r(r_script, data_path, seed, helper_path):
     os.close(fd)
     try:
         env = _r_child_env(helper_path)
-        cmd = ["Rscript", str(r_script), str(data_path), out_path,
-               "" if seed is None else str(seed)]
+        cmd = [
+            "Rscript",
+            str(r_script),
+            str(data_path),
+            out_path,
+            "" if seed is None else str(seed),
+        ]
         proc = subprocess.run(cmd, capture_output=True, text=True, env=env)
         if proc.returncode != 0:
             raise RuntimeError(
                 f"R script exited {proc.returncode}.\n--- R stdout ---\n{proc.stdout}\n"
-                f"--- R stderr ---\n{proc.stderr}")
+                f"--- R stderr ---\n{proc.stderr}"
+            )
         raw = json.loads(Path(out_path).read_text())
         return _coerce(raw), proc.stdout
     finally:

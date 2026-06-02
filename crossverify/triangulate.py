@@ -16,7 +16,7 @@ in one tool is always a hard failure (the replication is incomplete), regardless
 of severity.
 """
 
-from .checks import CheckResult, is_close, tol_for, severity_for, fmt
+from .checks import CheckResult, fmt, is_close, severity_for, tol_for
 
 
 def triangulate(py_results, r_results, tolerance):
@@ -30,7 +30,9 @@ def triangulate(py_results, r_results, tolerance):
         if k not in py_results or k not in r_results:
             note = "missing in Python" if k not in py_results else "missing in R"
             checks.append(CheckResult("5", f"triangulate:{k}", f"Python vs R: {k}", False, note))
-            rows.append({"stat": k, "python": a, "r": b, "delta": None, "match": False, "note": note})
+            rows.append(
+                {"stat": k, "python": a, "r": b, "delta": None, "match": False, "note": note}
+            )
             continue
 
         ok = is_close(a, b, atol, rtol, use_abs)
@@ -45,9 +47,11 @@ def triangulate(py_results, r_results, tolerance):
         if advisory and not ok:
             notes.append("advisory: severity=info, not a failure")
         note = "; ".join(notes)
-        detail = (f"python = {fmt(a)}, r = {fmt(b)}, |delta| = {fmt(delta)} "
-                  f"(atol={atol:g}, rtol={rtol:g}{', abs' if use_abs else ''}"
-                  f"{', advisory' if advisory else ''})")
+        detail = (
+            f"python = {fmt(a)}, r = {fmt(b)}, |delta| = {fmt(delta)} "
+            f"(atol={atol:g}, rtol={rtol:g}{', abs' if use_abs else ''}"
+            f"{', advisory' if advisory else ''})"
+        )
         checks.append(CheckResult("5", f"triangulate:{k}", f"Python vs R: {k}", passed, detail))
         rows.append({"stat": k, "python": a, "r": b, "delta": delta, "match": ok, "note": note})
     return checks, rows

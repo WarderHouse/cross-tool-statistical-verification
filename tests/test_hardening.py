@@ -26,11 +26,12 @@ def _project(base, **kw):
 
 # ---- F1: path containment ------------------------------------------------- #
 
+
 def test_within_base_relative_ok():
     base = Path(tempfile.mkdtemp())
     assert _within_base(base / "sub" / "x.csv", base) is True
-    assert _within_base(base / ".." / "x.csv", base) is False     # escapes base
-    assert _within_base("/etc/passwd", base) is False             # absolute outside
+    assert _within_base(base / ".." / "x.csv", base) is False  # escapes base
+    assert _within_base("/etc/passwd", base) is False  # absolute outside
 
 
 def test_external_path_rejected():
@@ -53,13 +54,15 @@ def test_allow_external_paths_optout():
 def test_load_parses_allow_external_paths():
     d = Path(tempfile.mkdtemp())
     (d / "p.yaml").write_text(
-        "data: data.csv\npython: {module: a.py}\nallow_external_paths: true\n")
+        "data: data.csv\npython: {module: a.py}\nallow_external_paths: true\n"
+    )
     assert Project.load(d / "p.yaml").allow_external_paths is True
     (d / "q.yaml").write_text("data: data.csv\npython: {module: a.py}\n")
     assert Project.load(d / "q.yaml").allow_external_paths is False
 
 
 # ---- F5: minimal R child environment -------------------------------------- #
+
 
 def test_r_child_env_drops_secrets():
     saved = {k: os.environ.get(k) for k in ("AWS_SECRET_ACCESS_KEY", "R_LIBS", "PATH")}
@@ -68,9 +71,9 @@ def test_r_child_env_drops_secrets():
         os.environ["R_LIBS"] = "/opt/Rlibs"
         os.environ.setdefault("PATH", "/usr/bin")
         env = _r_child_env("/tmp/helper.R")
-        assert "AWS_SECRET_ACCESS_KEY" not in env      # secret withheld
-        assert "PATH" in env                           # needed, kept
-        assert env.get("R_LIBS") == "/opt/Rlibs"       # R_* family kept
+        assert "AWS_SECRET_ACCESS_KEY" not in env  # secret withheld
+        assert "PATH" in env  # needed, kept
+        assert env.get("R_LIBS") == "/opt/Rlibs"  # R_* family kept
         assert env["CROSSVERIFY_R"] == "/tmp/helper.R"
     finally:
         for k, v in saved.items():
@@ -82,6 +85,7 @@ def test_r_child_env_drops_secrets():
 
 # ---- F2: safe template rendering ------------------------------------------ #
 
+
 def test_render_tolerates_bad_template():
     # Unknown placeholder is left intact instead of raising.
     assert _render("Hi $name, $missing", {"name": "X"}) == "Hi X, $missing"
@@ -92,8 +96,7 @@ def test_render_tolerates_bad_template():
 
 
 def _run_all():
-    fns = [v for k, v in sorted(globals().items())
-           if k.startswith("test_") and callable(v)]
+    fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for fn in fns:
         fn()
         print(f"ok  {fn.__name__}")
