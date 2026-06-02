@@ -1,5 +1,6 @@
 # cross-tool-statistical-verification
 
+[![CI](https://github.com/WarderHouse/cross-tool-statistical-verification/actions/workflows/ci.yml/badge.svg)](https://github.com/WarderHouse/cross-tool-statistical-verification/actions/workflows/ci.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20448660.svg)](https://doi.org/10.5281/zenodo.20448660)
 
 Check a statistical analysis the way a careful reviewer would: confirm the
@@ -269,11 +270,21 @@ and **tool-independent**. Three limits matter:
   coefficient is substantively meaningful, remains your call. The verification log
   ends with a short checklist of the judgments that stay with you.
 
-## Tests
+## Development
+
+Run the same checks CI does — lint, format, and the test suite:
 
 ```bash
-uv run pytest                   # or a single file: uv run python tests/test_checks.py
+uv run ruff check .         # lint   (add --fix to auto-fix what's safe)
+uv run ruff format .        # format (add --check to verify without writing)
+uv run pytest               # tests  (or a single file: uv run python tests/test_checks.py)
 ```
+
+CI also runs the worked example end-to-end on every push and pull request
+(Python-only across 3.10–3.13, plus one job with R for the cross-tool phase).
+To mirror the lint/format checks as a git hook, install
+[pre-commit](https://pre-commit.com/) and run `pre-commit install`
+(config in `.pre-commit-config.yaml`).
 
 ## License
 

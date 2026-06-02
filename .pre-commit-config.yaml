@@ -1,0 +1,10 @@
+# Mirror the CI lint/format checks locally.
+# Enable once with:  pre-commit install
+# Run on demand with: pre-commit run --all-files
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.15
+    hooks:
+      - id: ruff          # lint
+        args: [--fix]
+      - id: ruff-format   # format
