@@ -17,7 +17,7 @@ so the Phase 5 cross-tool comparison is meaningful only for deterministic
 estimators, not seed-matched random draws.
 """
 
-from .checks import CheckResult, is_close, fmt
+from .checks import CheckResult, fmt, is_close
 
 DEFAULT_ATOL = 0.0
 DEFAULT_RTOL = 1e-12
@@ -31,10 +31,20 @@ def reproducibility(run1, run2, tol=None):
     for k in sorted(set(run1) | set(run2)):
         a, b = run1.get(k), run2.get(k)
         if k not in run1 or k not in run2:
-            out.append(CheckResult("4", f"repro:{k}", f"{k} present on both runs", False,
-                                   f"run1={fmt(a)} run2={fmt(b)}"))
+            out.append(
+                CheckResult(
+                    "4",
+                    f"repro:{k}",
+                    f"{k} present on both runs",
+                    False,
+                    f"run1={fmt(a)} run2={fmt(b)}",
+                )
+            )
             continue
         ok = is_close(a, b, atol=atol, rtol=rtol)
-        out.append(CheckResult("4", f"repro:{k}", f"Re-run identical: {k}", ok,
-                               f"run1 = {fmt(a)}, run2 = {fmt(b)}"))
+        out.append(
+            CheckResult(
+                "4", f"repro:{k}", f"Re-run identical: {k}", ok, f"run1 = {fmt(a)}, run2 = {fmt(b)}"
+            )
+        )
     return out

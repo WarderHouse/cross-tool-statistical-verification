@@ -1,9 +1,9 @@
 """Command-line entrypoint.
 
-    python -m crossverify --project examples/project.yaml
-    python -m crossverify --project examples/project.yaml --skip-r
-    python -m crossverify --project examples/project.yaml --phases 1,3,5
-    python -m crossverify --init my_study/
+python -m crossverify --project examples/project.yaml
+python -m crossverify --project examples/project.yaml --skip-r
+python -m crossverify --project examples/project.yaml --phases 1,3,5
+python -m crossverify --init my_study/
 """
 
 import argparse
@@ -12,11 +12,18 @@ from contextlib import ExitStack
 from importlib import resources
 from pathlib import Path
 
-from . import __version__, consistency, intake, reproduce, report, transforms, triangulate
+from . import __version__, consistency, intake, report, reproduce, transforms, triangulate
 from .checks import CheckResult
 from .config import Project
-from .runner import (call_with_optional_seed, load_adapter, load_data,
-                     r_available, r_version, run_python, run_r)
+from .runner import (
+    call_with_optional_seed,
+    load_adapter,
+    load_data,
+    r_available,
+    r_version,
+    run_python,
+    run_r,
+)
 
 # Runtime data files ship inside the package (crossverify/crossverify.R and
 # crossverify/methodology_statement.md) and are resolved via importlib.resources
@@ -29,11 +36,17 @@ def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="crossverify",
         description="Six-phase verification harness for statistical analysis, "
-                    "with Python-vs-R cross-tool triangulation.")
+        "with Python-vs-R cross-tool triangulation.",
+    )
     ap.add_argument("--project", help="Path to the project YAML file.")
-    ap.add_argument("--out", default=None, help="Output directory (default: crossverify_out/<project>).")
-    ap.add_argument("--phases", default="1,2,3,4,5,6",
-                    help="Comma-separated phases to run (default: all). E.g. 1,3,5")
+    ap.add_argument(
+        "--out", default=None, help="Output directory (default: crossverify_out/<project>)."
+    )
+    ap.add_argument(
+        "--phases",
+        default="1,2,3,4,5,6",
+        help="Comma-separated phases to run (default: all). E.g. 1,3,5",
+    )
     ap.add_argument("--skip-r", action="store_true", help="Skip Phase 5 cross-tool triangulation.")
     ap.add_argument("--seed", type=int, default=None, help="Override the project's random seed.")
     ap.add_argument("--init", metavar="DIR", help="Scaffold a new project in DIR and exit.")
@@ -91,8 +104,9 @@ def main(argv=None):
 
     if 3 in phases:
         ranges = intake.numeric_ranges(analyzed)
-        data_scales = {c: float(analyzed[c].abs().sum())
-                       for c in analyzed.select_dtypes("number").columns}
+        data_scales = {
+            c: float(analyzed[c].abs().sum()) for c in analyzed.select_dtypes("number").columns
+        }
         all_results += consistency.consistency_checks(py_results, project, ranges, data_scales)
         all_results += consistency.group_checks(py_results, project, len(df))
         # Spot-checks recompute against the raw, as-loaded data on purpose: an
@@ -106,40 +120,68 @@ def main(argv=None):
     rver = "not run"
     if 5 in phases:
         if args.skip_r:
-            all_results.append(CheckResult("5", "triangulate:skipped",
-                                           "Cross-tool triangulation", None, "skipped: --skip-r"))
+            all_results.append(
+                CheckResult(
+                    "5",
+                    "triangulate:skipped",
+                    "Cross-tool triangulation",
+                    None,
+                    "skipped: --skip-r",
+                )
+            )
         elif not project.r_script:
-            all_results.append(CheckResult("5", "triangulate:skipped",
-                                           "Cross-tool triangulation", None,
-                                           "skipped: no r.script declared in the project"))
+            all_results.append(
+                CheckResult(
+                    "5",
+                    "triangulate:skipped",
+                    "Cross-tool triangulation",
+                    None,
+                    "skipped: no r.script declared in the project",
+                )
+            )
         elif not r_available():
-            all_results.append(CheckResult("5", "triangulate:skipped",
-                                           "Cross-tool triangulation", None,
-                                           "skipped: Rscript not found on PATH"))
+            all_results.append(
+                CheckResult(
+                    "5",
+                    "triangulate:skipped",
+                    "Cross-tool triangulation",
+                    None,
+                    "skipped: Rscript not found on PATH",
+                )
+            )
         else:
             # The R helper must be a concrete file on disk for the subprocess.
             # importlib.resources.as_file materializes it (extracting from a zip
             # if needed); the ExitStack keeps it alive for the run_r call.
             with ExitStack() as stack:
                 helper_r = stack.enter_context(
-                    resources.as_file(resources.files(__package__) / "crossverify.R"))
+                    resources.as_file(resources.files(__package__) / "crossverify.R")
+                )
                 r_results, _ = run_r(project.r_script, project.data_path, project.seed, helper_r)
             rver = r_version()
-            checks, comparison_rows = triangulate.triangulate(py_results, r_results, project.tolerance)
+            checks, comparison_rows = triangulate.triangulate(
+                py_results, r_results, project.tolerance
+            )
             all_results += checks
 
     out_dir = Path(args.out) if args.out else Path("crossverify_out") / Path(args.project).stem
     env = report.env_info(rver)
-    summary = report.compile_report(project, out_dir, all_results, intake_artifacts,
-                                    comparison_rows, env, TEMPLATE)
+    summary = report.compile_report(
+        project, out_dir, all_results, intake_artifacts, comparison_rows, env, TEMPLATE
+    )
 
     _print_summary(project, all_results, comparison_rows, summary, phases)
     return 0 if summary["failed"] == 0 else 1
 
 
 def _print_summary(project, all_results, comparison_rows, summary, phases):
-    titles = {"1": "intake", "2": "transforms", "3": "consistency",
-              "4": "reproducibility", "5": "triangulation"}
+    titles = {
+        "1": "intake",
+        "2": "transforms",
+        "3": "consistency",
+        "4": "reproducibility",
+        "5": "triangulation",
+    }
     print(f"\ncrossverify {__version__} — {project.analysis_name}")
     for p in ("1", "2", "3", "4", "5"):
         rows = [r for r in all_results if r.phase == p]
@@ -158,13 +200,19 @@ def _print_summary(project, all_results, comparison_rows, summary, phases):
         print(f"  Phase {p} {titles[p]:<16} {', '.join(bits)}")
     if comparison_rows:
         matched = sum(1 for r in comparison_rows if r["match"])
-        print(f"  Cross-tool: {matched}/{len(comparison_rows)} statistics matched within tolerance.")
+        print(
+            f"  Cross-tool: {matched}/{len(comparison_rows)} statistics matched within tolerance."
+        )
     verdict = "PASS" if summary["failed"] == 0 else "FAIL"
-    print(f"\nResult: {verdict} ({summary['passed']} passed, {summary['failed']} failed, "
-          f"{summary['info']} informational)")
-    print(f"Wrote: {summary['out_dir']}/  "
-          f"(verification_log.md, comparison_table.md, methodology_statement.md, "
-          f"verification_results.json)")
+    print(
+        f"\nResult: {verdict} ({summary['passed']} passed, {summary['failed']} failed, "
+        f"{summary['info']} informational)"
+    )
+    print(
+        f"Wrote: {summary['out_dir']}/  "
+        f"(verification_log.md, comparison_table.md, methodology_statement.md, "
+        f"verification_results.json)"
+    )
 
 
 def _init(target):
@@ -232,7 +280,7 @@ def run(df, seed=None):
     }
 '''
 
-_INIT_R = '''\
+_INIT_R = """\
 # Independent R replication. Emit the SAME statistic names as analysis.py.
 source(Sys.getenv("CROSSVERIFY_R"))
 args <- cv_args()
@@ -241,4 +289,4 @@ d <- read.csv(args$data, stringsAsFactors = FALSE)
 cv_emit(list(
   n_obs = nrow(d)
 ), args$out)
-'''
+"""

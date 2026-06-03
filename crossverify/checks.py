@@ -2,7 +2,6 @@
 
 import math
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -16,7 +15,7 @@ class CheckResult:
     phase: str
     name: str
     description: str
-    passed: Optional[bool]
+    passed: bool | None
     detail: str = ""
 
     @property

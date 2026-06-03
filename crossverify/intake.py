@@ -12,9 +12,15 @@ def inspect(df):
     results = []
     artifacts = {}
 
-    results.append(CheckResult(
-        "1", "intake:shape", "Dataset dimensions", None,
-        f"{df.shape[0]} rows x {df.shape[1]} columns"))
+    results.append(
+        CheckResult(
+            "1",
+            "intake:shape",
+            "Dataset dimensions",
+            None,
+            f"{df.shape[0]} rows x {df.shape[1]} columns",
+        )
+    )
 
     dtypes = "; ".join(f"{c}: {t}" for c, t in df.dtypes.astype(str).items())
     results.append(CheckResult("1", "intake:dtypes", "Column dtypes", None, dtypes))
@@ -26,12 +32,15 @@ def inspect(df):
     artifacts["head"] = df.head(10).to_string()
     numeric = df.select_dtypes("number")
     artifacts["describe"] = (
-        numeric.describe().to_string() if not numeric.empty else "(no numeric columns)")
+        numeric.describe().to_string() if not numeric.empty else "(no numeric columns)"
+    )
 
     cat_blocks = []
     for col in df.select_dtypes(exclude="number").columns:
         vc = df[col].value_counts().head(10)
-        cat_blocks.append(f"{col} (top {min(10, df[col].nunique())} of {df[col].nunique()} unique):\n{vc.to_string()}")
+        cat_blocks.append(
+            f"{col} (top {min(10, df[col].nunique())} of {df[col].nunique()} unique):\n{vc.to_string()}"
+        )
     artifacts["categorical"] = "\n\n".join(cat_blocks) if cat_blocks else "(no categorical columns)"
 
     return results, artifacts

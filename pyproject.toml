@@ -51,6 +51,7 @@ Repository = "https://github.com/WarderHouse/cross-tool-statistical-verification
 # Development tooling, installed by default with `uv sync`.
 dev = [
     "pytest>=8",
+    "ruff>=0.15.15,<0.16",
 ]
 
 [build-system]
@@ -70,3 +71,14 @@ artifacts = [
     "crossverify/crossverify.R",
     "crossverify/methodology_statement.md",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# E/F = pycodestyle + pyflakes, I = import sorting, UP = pyupgrade, B = bugbear.
+# Line length is enforced by the formatter, so E501 is ignored here to avoid
+# `# noqa` litter on unsplittable strings/URLs.
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
