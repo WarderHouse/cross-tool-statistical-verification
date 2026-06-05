@@ -1,4 +1,9 @@
-"""Phase 6 — compile the verification log, comparison table, and methodology statement."""
+"""Compile the verification log, comparison table, and methodology statement.
+
+Phase 6 of the crossverify pipeline. Renders the collected check results and
+cross-tool comparison rows into the Markdown and JSON artifacts written to the
+output directory.
+"""
 
 import json
 import string
@@ -21,6 +26,15 @@ PHASE_TITLES = OrderedDict(
 
 
 def _counts(results):
+    """Tally ``(passed, failed, info)`` from a list of ``CheckResult`` objects.
+
+    Args:
+        results: Iterable of ``CheckResult`` objects whose ``passed`` attribute is
+            ``True`` (passed), ``False`` (failed), or ``None`` (informational).
+
+    Returns:
+        A ``(passed, failed, info)`` tuple of counts.
+    """
     passed = sum(1 for r in results if r.passed is True)
     failed = sum(1 for r in results if r.passed is False)
     info = sum(1 for r in results if r.passed is None)
@@ -28,6 +42,17 @@ def _counts(results):
 
 
 def comparison_table_md(rows):
+    """Render cross-tool comparison rows as a Markdown table.
+
+    Args:
+        rows: List of comparison-row mappings, each with ``stat``, ``python``, ``r``,
+            ``delta``, and ``match`` keys and an optional ``note`` key. Numeric values
+            are formatted via :func:`crossverify.checks.fmt`.
+
+    Returns:
+        A Markdown table as a string, or a placeholder sentence when ``rows`` is empty.
+        Always terminated by a trailing newline.
+    """
     if not rows:
         return "_No cross-tool comparison was performed._\n"
     lines = ["| Statistic | Python | R | \\|Δ\\| | Match |", "|---|---|---|---|---|"]
@@ -42,6 +67,25 @@ def comparison_table_md(rows):
 
 
 def _methodology(project, env, comparison_rows, template_path):
+    """Render the methodology statement by substituting fields into the template.
+
+    Builds the substitution fields from the project, environment, and comparison
+    summary, then fills the template. ``template_path`` may be an
+    ``importlib.resources`` Traversable (which has its own ``read_text``) or a
+    filesystem path/str (wrapped in ``Path``); both are handled.
+
+    Args:
+        project: The :class:`crossverify.config.Project` supplying ``tolerance``,
+            ``metadata``, ``seed``, and ``analysis_name``.
+        env: Environment mapping with ``date``, ``python_version``, and ``r_version``
+            keys (as returned by :func:`env_info`).
+        comparison_rows: List of comparison-row mappings; their count and the number
+            with truthy ``match`` populate the statement.
+        template_path: Traversable or filesystem path/str to the methodology template.
+
+    Returns:
+        The rendered methodology statement as a string.
+    """
     n_compared = len(comparison_rows)
     n_matched = sum(1 for r in comparison_rows if r["match"])
     tol = project.tolerance
@@ -82,6 +126,14 @@ def _render(template_text, fields):
     Uses ``string.Template.safe_substitute`` so a user-edited template with an
     unknown or malformed placeholder leaves the token intact instead of raising
     or exposing attribute access (unlike ``str.format``).
+
+    Args:
+        template_text: Template body containing ``$name`` placeholders.
+        fields: Mapping of placeholder name to substitution value.
+
+    Returns:
+        The template text with known placeholders substituted and unknown ones left
+        intact.
     """
     return string.Template(template_text).safe_substitute(fields)
 
@@ -89,6 +141,28 @@ def _render(template_text, fields):
 def compile_report(
     project, out_dir, all_results, intake_artifacts, comparison_rows, env, template_path
 ):
+    """Write the verification log, comparison table, methodology, and JSON summary.
+
+    Groups ``all_results`` by phase, tallies pass/fail/info counts, and emits four
+    files into ``out_dir``: ``verification_log.md``, ``comparison_table.md``,
+    ``methodology_statement.md``, and ``verification_results.json``. The output
+    directory is created if it does not exist.
+
+    Args:
+        project: The :class:`crossverify.config.Project` describing the analysis.
+        out_dir: Destination directory for the artifacts; coerced to ``Path`` and
+            created (with parents) if absent.
+        all_results: Iterable of ``CheckResult`` objects across all phases.
+        intake_artifacts: Mapping with Phase-1 text blocks under ``head``, ``describe``,
+            and ``categorical`` keys.
+        comparison_rows: List of cross-tool comparison-row mappings for Phase 5.
+        env: Environment mapping with ``date``, ``python_version``, and ``r_version``.
+        template_path: Traversable or path/str to the methodology template.
+
+    Returns:
+        A summary dict with ``passed``, ``failed``, and ``info`` counts and ``out_dir``
+        (the output directory as a string).
+    """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -198,6 +272,15 @@ def compile_report(
 
 
 def env_info(r_version_str):
+    """Assemble the environment block recorded in the report.
+
+    Args:
+        r_version_str: Pre-resolved R version string (e.g. from :func:`runner.r_version`).
+
+    Returns:
+        A dict with ``date`` (current local timestamp, ``YYYY-MM-DD HH:MM``),
+        ``python_version``, and ``r_version``.
+    """
     import platform
 
     return {

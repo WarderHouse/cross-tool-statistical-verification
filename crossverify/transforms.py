@@ -12,9 +12,27 @@ from .runner import call_with_optional_seed
 
 
 def run_phase(adapter, df, project, prepared=None):
-    """Phase 2. ``prepared`` may be supplied by the caller (cli.main computes it
-    once and reuses it here) to avoid invoking prepare() a second time; if it is
-    None and the adapter declares prepare(), this function calls it."""
+    """Run Phase 2 transformation sanity checks and return the prepared frame.
+
+    If the adapter exposes a callable ``prepare``, records a before/after shape snapshot
+    and evaluates each declared ``transform_check``; otherwise records that the analysis
+    consumes the raw dataset as loaded. ``prepared`` may be supplied by the caller
+    (``cli.main`` computes it once and reuses it here) to avoid invoking ``prepare()`` a
+    second time; if it is ``None`` and the adapter declares ``prepare()``, this function
+    calls it.
+
+    Args:
+        adapter: Analysis adapter module, optionally exposing ``prepare(df, seed=None)``.
+        df: The raw input ``DataFrame`` as loaded.
+        project: The :class:`~crossverify.config.Project` supplying ``seed`` and
+            ``transform_checks``.
+        prepared: Optionally, the already-computed prepared ``DataFrame`` to reuse.
+
+    Returns:
+        A ``(results, frame)`` tuple where ``results`` is a list of
+        :class:`~crossverify.checks.CheckResult` and ``frame`` is the prepared
+        ``DataFrame`` (or the original ``df`` when no ``prepare()`` step exists).
+    """
     results = []
     prepare = getattr(adapter, "prepare", None)
 
@@ -48,6 +66,19 @@ def run_phase(adapter, df, project, prepared=None):
 
 
 def _evaluate(spec, df):
+    """Evaluate a single transform-check ``spec`` against ``df``.
+
+    Dispatches on ``spec["kind"]`` (``range``, ``no_duplicate_rows``, ``row_count``);
+    unknown kinds yield an INFO skip and a malformed spec yields a FAIL rather than
+    silently passing.
+
+    Args:
+        spec: A single transform-check specification mapping (must contain ``kind``).
+        df: The prepared ``DataFrame`` to evaluate the check against.
+
+    Returns:
+        A :class:`~crossverify.checks.CheckResult` capturing the check outcome.
+    """
     kind = spec.get("kind", "")
     try:
         if kind == "range":
