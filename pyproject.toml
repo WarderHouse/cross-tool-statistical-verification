@@ -51,7 +51,9 @@ Repository = "https://github.com/WarderHouse/cross-tool-statistical-verification
 # Development tooling, installed by default with `uv sync`.
 dev = [
     "pytest>=8",
-    "ruff>=0.15.15,<0.16",
+    # Pinned exactly to match .pre-commit-config.yaml (rev: v0.15.15) so local
+    # pre-commit and CI `ruff format --check` can never disagree on formatting.
+    "ruff==0.15.15",
 ]
 
 [build-system]

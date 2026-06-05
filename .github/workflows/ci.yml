@@ -13,18 +13,21 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Actions are pinned to immutable commit SHAs (not floating tags) so a retagged
+# or compromised release cannot silently change what runs in CI. Dependabot
+# (.github/dependabot.yml) bumps these SHAs and annotates the version.
 jobs:
   lint:
     name: Lint & format (ruff)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
-      - name: Sync dependencies
-        run: uv sync
+      - name: Sync dependencies (locked)
+        run: uv sync --locked
       - name: Lint (ruff check)
         run: uv run ruff check .
       - name: Format check (ruff format --check)
@@ -38,15 +41,15 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
-      - name: Sync dependencies
-        run: uv sync --python ${{ matrix.python-version }}
+      - name: Sync dependencies (locked)
+        run: uv sync --locked --python ${{ matrix.python-version }}
       - name: Run tests
         run: uv run pytest -q
       # The worked example runs end-to-end; Phase 5 (cross-tool) auto-skips
@@ -59,20 +62,60 @@ jobs:
     name: Cross-tool example (Python + R)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
+      # Pin R and the package snapshot so the cross-tool environment is
+      # reproducible (a floating R release or CRAN HEAD can't silently drift CI).
+      - name: Set up R
+        uses: r-lib/actions/setup-r@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
+        with:
+          r-version: "4.4.2"
+          use-public-rspm: true
+      - name: Install R dependency (jsonlite, dated snapshot)
+        run: Rscript -e 'install.packages("jsonlite", repos = "https://packagemanager.posit.co/cran/2026-05-01")'
+      - name: Sync dependencies (locked)
+        run: uv sync --locked
+      # With Rscript present, Phase 5 actually triangulates Python vs R — this is
+      # the tool's signature check. A skipped Phase 5 is INFO (exit 0), so assert
+      # it actually ran rather than trusting the exit code alone.
+      - name: Worked example with Phase 5 (cross-tool) active
+        run: |
+          uv run crossverify --project examples/project.yaml | tee out.txt
+          grep -Eq "Cross-tool: [0-9]+/[0-9]+ statistics matched" out.txt \
+            || { echo "::error::Phase 5 did not triangulate (skipped, or no statistics compared)"; exit 1; }
+
+  wheel:
+    name: Built-wheel smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
       - name: Set up R
-        uses: r-lib/actions/setup-r@v2
+        uses: r-lib/actions/setup-r@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
         with:
-          r-version: release
-      - name: Install R dependency (jsonlite)
-        run: Rscript -e 'install.packages("jsonlite", repos = "https://cloud.r-project.org")'
-      - name: Sync dependencies
-        run: uv sync
-      # With Rscript present, Phase 5 actually triangulates Python vs R — this
-      # is the tool's signature check, so exercise it end-to-end (exit 0).
-      - name: Worked example with Phase 5 (cross-tool) active
-        run: uv run crossverify --project examples/project.yaml
+          r-version: "4.4.2"
+          use-public-rspm: true
+      - name: Install R dependency (jsonlite, dated snapshot)
+        run: Rscript -e 'install.packages("jsonlite", repos = "https://packagemanager.posit.co/cran/2026-05-01")'
+      - name: Build the wheel
+        run: uv build --wheel
+      - name: Install the built wheel into a clean venv
+        run: |
+          python3 -m venv /tmp/wheel-venv
+          /tmp/wheel-venv/bin/pip install --quiet dist/*.whl
+      # Run from OUTSIDE the checkout so the packaged data files (crossverify.R
+      # for Phase 5, methodology_statement.md for Phase 6) must resolve from the
+      # installed wheel via importlib.resources — not from the source tree. This
+      # is the only job that exercises a real (non-editable) install.
+      - name: Run the example from the installed wheel
+        working-directory: /tmp
+        run: |
+          /tmp/wheel-venv/bin/crossverify --project "$GITHUB_WORKSPACE/examples/project.yaml" | tee out.txt
+          grep -Eq "Cross-tool: [0-9]+/[0-9]+ statistics matched" out.txt \
+            || { echo "::error::built wheel failed Phase 5 (packaged R helper not found?)"; exit 1; }
