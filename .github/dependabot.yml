@@ -3,7 +3,9 @@
 # and merges them once CI is green. See issue #9.
 version: 2
 updates:
-  # Python dependencies — uv-managed (pyproject.toml + uv.lock), runtime + dev.
+  # Python dependencies — uv-managed (pyproject.toml + uv.lock).
+  # Runtime and dev deps are grouped separately so dev-tool churn (ruff,
+  # pytest) can merge independently of runtime (pandas, statsmodels).
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
@@ -16,16 +18,25 @@ updates:
     assignees:
       - "olivercrocco"
     groups:
-      # Batch minor/patch bumps into one PR to limit noise; major bumps come
-      # as separate PRs so breaking changes get individual review.
-      python-deps:
-        patterns:
-          - "*"
+      # Batch minor/patch bumps to limit noise; major bumps come as separate
+      # PRs so breaking changes get individual review. Runtime and dev are
+      # split so dev-tool churn can't block a runtime patch update (review #5).
+      runtime-deps:
+        applies-to: version-updates
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      dev-deps:
+        applies-to: version-updates
+        dependency-type: "development"
         update-types:
           - "minor"
           - "patch"
 
   # GitHub Actions used by the workflows in .github/workflows/.
+  # Becomes meaningful once ci.yml SHA-pins its actions (see #15): Dependabot
+  # then bumps the pinned SHA and annotates the version.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
