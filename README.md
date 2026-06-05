@@ -286,6 +286,12 @@ To mirror the lint/format checks as a git hook, install
 [pre-commit](https://pre-commit.com/) and run `pre-commit install`
 (config in `.pre-commit-config.yaml`).
 
+Dependency updates are automated with
+[Dependabot](.github/dependabot.yml): it opens grouped pull requests weekly
+for the Python dependencies (uv) and the GitHub Actions used in CI, minor and
+patch bumps batched into one PR per ecosystem and majors raised separately. A
+maintainer reviews and merges them once CI is green.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
