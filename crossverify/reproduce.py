@@ -24,6 +24,26 @@ DEFAULT_RTOL = 1e-12
 
 
 def reproducibility(run1, run2, tol=None):
+    """Compare two runs of the same analysis and flag any statistic that drifted.
+
+    Walks the union of keys across ``run1`` and ``run2``. A key present in only one
+    run fails as a presence check; a key present in both is compared with
+    :func:`~crossverify.checks.is_close` under the resolved tolerance. The default
+    tolerance is extremely tight (``rtol = 1e-12``) rather than bit-exact, so genuinely
+    deterministic code still passes when a multithreaded BLAS reduces sums in a slightly
+    different order between two calls (last-ULP drift).
+
+    Args:
+        run1: Mapping of statistic name to value from the first run.
+        run2: Mapping of statistic name to value from the second (re-)run.
+        tol: Optional tolerance mapping; reads ``atol`` (default ``DEFAULT_ATOL``) and
+            ``rtol`` (default ``DEFAULT_RTOL``). ``None`` is treated as an empty mapping.
+
+    Returns:
+        A list of phase-4 ``CheckResult`` records, one per statistic in the union of
+        ``run1`` and ``run2``: a failed presence check when a key is missing from either
+        run, otherwise a pass/fail on whether the two values agree within tolerance.
+    """
     tol = tol or {}
     atol = tol.get("atol", DEFAULT_ATOL)
     rtol = tol.get("rtol", DEFAULT_RTOL)

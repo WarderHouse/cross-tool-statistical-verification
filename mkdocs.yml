@@ -1,0 +1,85 @@
+site_name: crossverify
+site_description: >-
+  A six-phase verification harness for statistical analysis, with Python-vs-R
+  cross-tool triangulation.
+site_url: https://cross-tool-statistical-verification.readthedocs.io/
+repo_url: https://github.com/WarderHouse/cross-tool-statistical-verification
+repo_name: WarderHouse/cross-tool-statistical-verification
+edit_uri: edit/main/docs/
+copyright: MIT-licensed. Runs entirely on your machine; no network calls.
+
+# docs/requirements.txt is a build input, not a doc page — keep it out of the site.
+exclude_docs: |
+  requirements.txt
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - content.code.copy
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+hooks:
+  - mkdocs_hooks.py
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          # Read the package source statically (griffe) from the repo root, so
+          # the docs build needs no install of crossverify or its runtime deps.
+          paths: [.]
+          options:
+            docstring_style: google
+            show_root_heading: true
+            show_root_full_path: false
+            show_source: true
+            members_order: source
+            merge_init_into_class: true
+            docstring_section_style: table
+            filters: ["!^__"]
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+
+# "The Protocol" sits immediately after Home and ahead of the API Reference —
+# it is the conceptual centerpiece of the project (see issue #7).
+nav:
+  - Home: index.md
+  - The Protocol: PROTOCOL.md
+  - API Reference:
+      - checks: reference/checks.md
+      - cli: reference/cli.md
+      - config: reference/config.md
+      - consistency: reference/consistency.md
+      - intake: reference/intake.md
+      - report: reference/report.md
+      - reproduce: reference/reproduce.md
+      - runner: reference/runner.md
+      - transforms: reference/transforms.md
+      - triangulate: reference/triangulate.md

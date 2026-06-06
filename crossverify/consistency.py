@@ -35,6 +35,29 @@ _RANGE_KINDS = {
 
 
 def consistency_checks(results, project, data_ranges, data_scales=None, near_zero_atol=1e-6):
+    """Run every declared consistency check against the emitted statistics.
+
+    Iterates the project's ``checks`` mapping and dispatches each declared statistic to
+    :func:`_one`, which confirms the reported value is the kind of number it claims to be
+    (an R-squared in ``[0, 1]``, a standardized loading in ``[-1, 1]``, an
+    OLS-with-intercept residual sum near zero, a coefficient of an expected sign, and so
+    on).
+
+    Args:
+        results: Mapping of statistic name to the value emitted by ``run()``. A declared
+            statistic absent from this mapping fails its presence check.
+        project: The loaded ``Project``; only ``project.checks`` (name -> spec) is read.
+        data_ranges: Mapping of column name to an observed ``(lo, hi)`` numeric range,
+            used to bound ``centroid`` kinds. ``None`` is treated as empty.
+        data_scales: Optional mapping of column name to a response magnitude used to
+            scale the ``residual_sum`` tolerance. ``None`` is treated as empty.
+        near_zero_atol: Absolute tolerance for "near zero" comparisons (e.g. the default
+            ``residual_sum`` tolerance when no column scale applies).
+
+    Returns:
+        A list of phase-3 ``CheckResult`` records, one per declared check in
+        ``project.checks``.
+    """
     out = []
     for name, spec in project.checks.items():
         out.append(
@@ -52,6 +75,33 @@ def consistency_checks(results, project, data_ranges, data_scales=None, near_zer
 
 
 def _one(name, value, spec, present, data_ranges, data_scales, near_zero_atol):
+    """Evaluate a single declared statistic according to its ``kind``.
+
+    Coerces ``value`` to ``float`` and dispatches on ``spec["kind"]`` to the matching
+    rule: fixed-interval kinds (``r_squared``, ``p_value``, ``proportion``,
+    ``variance_explained``, ``correlation``), ``loading``, ``count``, ``coefficient``,
+    ``residual_sum``, ``converged``, and ``centroid``. A missing statistic, a
+    non-numeric value, or an unrecognised kind each yields an appropriate failing or
+    informational result.
+
+    Args:
+        name: Statistic name (used in the result id and description).
+        value: The emitted value; coerced via ``float()``.
+        spec: The check spec mapping for this statistic; ``kind`` selects the rule and
+            other keys (e.g. ``standardized``, ``equals``, ``column``) tune it. May be
+            falsy, in which case the kind is treated as empty.
+        present: Whether ``name`` was actually emitted by ``run()``.
+        data_ranges: Mapping of column name to observed ``(lo, hi)`` range, consulted for
+            ``centroid`` kinds.
+        data_scales: Mapping of column name to response magnitude, consulted for
+            ``residual_sum`` kinds.
+        near_zero_atol: Absolute tolerance forwarded to the ``residual_sum`` rule.
+
+    Returns:
+        A single phase-3 ``CheckResult``. ``passed`` is ``None`` for informational
+        outcomes (e.g. unstandardized loadings, unconstrained coefficient signs, or an
+        unknown kind).
+    """
     kind = (spec or {}).get("kind", "")
     rid = f"consistency:{name}"
 
@@ -142,6 +192,26 @@ def _one(name, value, spec, present, data_ranges, data_scales, near_zero_atol):
 
 
 def _coefficient(name, rid, v, spec):
+    """Check a coefficient against its ``expected_sign``, defaulting an opposite sign to INFO.
+
+    Compares ``v`` against ``spec["expected_sign"]`` (``positive``, ``negative``,
+    ``nonzero``, or ``any``). A coefficient with the opposite sign is frequently the
+    substantive finding rather than a computation error, so by default a mismatch is
+    reported as informational; set ``spec["severity"]`` to ``fail`` to make a sign
+    mismatch a hard failure instead.
+
+    Args:
+        name: Statistic name (used in the result description).
+        rid: Pre-built result id for this check.
+        v: The coefficient value as a ``float``.
+        spec: The check spec; reads ``expected_sign`` (default ``any``) and ``severity``
+            (default ``warn``).
+
+    Returns:
+        A phase-3 ``CheckResult``. ``passed`` is ``True`` when the sign matches, ``False``
+        only when it mismatches and ``severity`` is ``fail``, and ``None`` for an
+        unconstrained sign, an unknown ``expected_sign``, or a non-failing mismatch.
+    """
     sign = (spec.get("expected_sign") or "any").lower()
     if sign == "any":
         return CheckResult(
@@ -169,6 +239,31 @@ def _coefficient(name, rid, v, spec):
 
 
 def _residual_sum(name, rid, v, spec, data_scales, near_zero_atol):
+    """Check that a residual sum is ~ 0, scaling the tolerance to the response magnitude.
+
+    ``|Sigma resid| ~ 0`` is a theorem for OLS *with an intercept* only; it does not hold
+    for regression through the origin, GLM/logistic, WLS/GLS, or penalized fits. The
+    tolerance scales to the response magnitude (``Sigma|y|``) when a ``column`` (resolved
+    via ``data_scales``) or an explicit ``scale`` is given, so a correct large-scale fit
+    is not failed by ordinary floating-point accumulation. The effective tolerance is
+    ``atol + rtol * scale``.
+
+    Args:
+        name: Statistic name (used in the result description).
+        rid: Pre-built result id for this check.
+        v: The reported residual sum as a ``float``.
+        spec: The check spec; reads ``column``, ``scale``, ``atol`` (default
+            ``near_zero_atol``), and ``rtol`` (default ``1e-9`` when a scale is known,
+            else ``0.0``).
+        data_scales: Mapping of column name to response magnitude; supplies the scale when
+            ``spec["column"]`` is present in it.
+        near_zero_atol: Fallback absolute tolerance when ``spec`` does not override
+            ``atol``.
+
+    Returns:
+        A phase-3 ``CheckResult`` that passes when ``abs(v)`` is within the (possibly
+        scaled) tolerance.
+    """
     # |Sigma resid| ~ 0 is a theorem for OLS *with an intercept* only. The
     # tolerance scales to the response magnitude (Sigma|y|) when a `column` (or
     # explicit `scale`) is given, so a correct large-scale fit is not failed by
@@ -193,6 +288,25 @@ def _residual_sum(name, rid, v, spec, data_scales, near_zero_atol):
 
 
 def group_checks(results, project, n_rows):
+    """Check arithmetic relations across groups of statistics (sums to N, 1, or <= 1).
+
+    For each spec in ``project.group_checks``, sums the named statistics and verifies the
+    declared relation: ``sum_to_n`` (equals ``N``, defaulting to ``n_rows``),
+    ``sum_to_one`` (equals 1), or ``sum_le_one`` (at most 1). A spec referencing a
+    statistic absent from ``results`` fails with the missing keys listed; an unsupported
+    ``kind`` is skipped as informational.
+
+    Args:
+        results: Mapping of statistic name to value; every key in a spec's ``keys`` must
+            be present.
+        project: The loaded ``Project``; only ``project.group_checks`` is read.
+        n_rows: Row count used as the default ``N`` for ``sum_to_n`` when the spec does
+            not set ``n``.
+
+    Returns:
+        A list of phase-3 ``CheckResult`` records, one per spec in
+        ``project.group_checks``.
+    """
     out = []
     for spec in project.group_checks:
         kind = spec.get("kind", "")
@@ -262,6 +376,30 @@ _AGGS = {
 
 
 def spot_checks(results, project, df):
+    """Recompute reported statistics directly from the raw data and compare them.
+
+    For each spec in ``project.spot_checks``, recomputes the statistic straight from
+    ``df`` so the analysis cannot quietly disagree with its source. Supports ``std`` (with
+    a configurable ``ddof``, defaulting to the pandas/R convention of 1) and the
+    aggregations in ``_AGGS`` (``mean``, ``sum``, ``count``, ``median``, ``min``,
+    ``max``), optionally restricted by a ``where`` equality filter. The recomputed value
+    is compared to the reported one via :func:`~crossverify.checks.is_close` under the
+    per-key tolerance from ``project.tolerance``. Any exception during a spot-check is
+    captured and reported as a failing result rather than propagated, and an unsupported
+    ``op`` is reported as informational.
+
+    Args:
+        results: Mapping of statistic name to the value reported by the analysis; the
+            comparison target for each spot-check.
+        project: The loaded ``Project``; reads ``project.spot_checks`` and
+            ``project.tolerance``.
+        df: The analyzed ``DataFrame`` from which each statistic is independently
+            recomputed.
+
+    Returns:
+        A list of phase-3 ``CheckResult`` records, one per spec in
+        ``project.spot_checks``.
+    """
     out = []
     for sc in project.spot_checks:
         stat = sc.get("stat")

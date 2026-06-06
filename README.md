@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/WarderHouse/cross-tool-statistical-verification/actions/workflows/ci.yml/badge.svg)](https://github.com/WarderHouse/cross-tool-statistical-verification/actions/workflows/ci.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20448660.svg)](https://doi.org/10.5281/zenodo.20448660)
+[![Docs](https://readthedocs.org/projects/cross-tool-statistical-verification/badge/?version=latest)](https://cross-tool-statistical-verification.readthedocs.io/en/latest/)
 
 Check a statistical analysis the way a careful reviewer would: confirm the
 numbers are internally consistent, reproduce identically on a second run, and
@@ -24,6 +25,20 @@ show editors, reviewers, and co-authors that their results hold up.
 **Try it in your browser:** a [live demo](https://olivercrocco.shinyapps.io/ctsv-demo/)
 runs the verification on the mtcars example and lets you watch the cross-tool check
 catch a bug. Its source is in [demo/](demo/).
+
+## Documentation
+
+Hosted on **Read the Docs**:
+<https://cross-tool-statistical-verification.readthedocs.io/>. It leads with the
+six-phase **[Protocol](docs/PROTOCOL.md)** explainer, followed by an API
+reference generated from the source docstrings (via MkDocs + mkdocstrings).
+
+Preview it locally with the same toolchain CI and Read the Docs use — no install
+of the package or R required, since mkdocstrings reads the source statically:
+
+```bash
+uv run --no-project --with-requirements docs/requirements.txt mkdocs serve
+```
 
 ## What it checks
 

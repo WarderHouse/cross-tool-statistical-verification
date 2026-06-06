@@ -12,6 +12,9 @@ crossverify_out/
 dist/
 *.egg-info/
 
+# MkDocs build output
+site/
+
 # Your real studies are private — keep them here and they stay out of git.
 # (The committed examples/ project is the only one tracked.)
 projects/

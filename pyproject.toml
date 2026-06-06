@@ -45,7 +45,9 @@ crossverify = "crossverify.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/WarderHouse/cross-tool-statistical-verification"
+Documentation = "https://cross-tool-statistical-verification.readthedocs.io/"
 Repository = "https://github.com/WarderHouse/cross-tool-statistical-verification"
+Issues = "https://github.com/WarderHouse/cross-tool-statistical-verification/issues"
 
 [dependency-groups]
 # Development tooling, installed by default with `uv sync`.
