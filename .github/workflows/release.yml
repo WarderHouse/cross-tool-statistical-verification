@@ -1,0 +1,111 @@
+name: Release
+
+# Build, verify, and publish crossverify via PyPI Trusted Publishing (OIDC) —
+# no API tokens are stored. Two paths:
+#   * push a tag  vX.Y.Z          -> build, check, publish to PyPI
+#   * run manually (Actions tab)  -> build, check, publish to TestPyPI
+#
+# Before the first publish, a "pending publisher" must be configured on
+# (Test)PyPI for this repo + `release.yml` + the `pypi` / `testpypi`
+# environment (see README "Releasing"). Until then the publish step fails
+# closed: it cannot push to anywhere unconfigured, and merging this workflow
+# never publishes on its own (it only runs on a tag or a manual dispatch).
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+# Least privilege by default; the publish jobs additively request id-token.
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & check distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - name: Install uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: true
+      # A tag release must match the packaged version, or PyPI gets a release
+      # whose number disagrees with crossverify.__version__.
+      - name: Assert tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(grep -oP '__version__\s*=\s*"\K[^"]+' crossverify/__init__.py)"
+          echo "tag=$tag  package=$pkg"
+          [ "$tag" = "$pkg" ] || { echo "::error::tag v$tag != crossverify.__version__ ($pkg)"; exit 1; }
+      # Gate the release on a green commit: a tag can be pushed at any SHA, so do
+      # not trust that CI ran. Re-run the suite and the worked example (Python-only;
+      # Phase 5 auto-skips without R) before building, so a red commit never ships.
+      - name: Test gate (suite + example must pass)
+        run: |
+          uv sync --locked
+          uv run pytest -q
+          uv run crossverify --project examples/project.yaml
+      - name: Build sdist + wheel
+        run: uv build
+      - name: Check distribution metadata
+        run: uvx twine check dist/*
+      # Verify the exact artifact we are about to publish installs and its entry
+      # point runs (Python-only; the full Phase-5-from-wheel test lives in ci.yml).
+      - name: Smoke-test the built wheel
+        run: |
+          python3 -m venv /tmp/relcheck
+          /tmp/relcheck/bin/pip install --quiet dist/*.whl
+          /tmp/relcheck/bin/crossverify --help > /dev/null
+          /tmp/relcheck/bin/python -c "import crossverify; print('import OK', crossverify.__version__)"
+      - name: Upload distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  testpypi:
+    name: Publish to TestPyPI (manual)
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/crossverify
+    permissions:
+      id-token: write # mint the OIDC token Trusted Publishing trades for an upload
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    name: Publish to PyPI (tag)
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/crossverify
+    permissions:
+      id-token: write # mint the OIDC token Trusted Publishing trades for an upload
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
