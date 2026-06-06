@@ -1,5 +1,7 @@
 """Load and validate a verification project file (YAML)."""
 
+from __future__ import annotations  # PEP 604 (X | None) annotations on Python 3.9
+
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -71,7 +73,7 @@ class Project:
     allow_external_paths: bool = False
 
     @classmethod
-    def load(cls, path) -> "Project":
+    def load(cls, path) -> Project:
         """Load a project from a YAML file, resolving its paths relative to that file.
 
         Relative ``data``, ``python.module``, and ``r.script`` paths are resolved against

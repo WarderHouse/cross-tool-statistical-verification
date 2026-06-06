@@ -1,5 +1,7 @@
 """Shared numeric utilities: the check record, float comparison, tolerances."""
 
+from __future__ import annotations  # PEP 604 (X | None) annotations on Python 3.9
+
 import math
 from dataclasses import dataclass
 
