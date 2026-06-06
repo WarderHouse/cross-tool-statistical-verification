@@ -43,6 +43,14 @@ jobs:
           pkg="$(grep -oP '__version__\s*=\s*"\K[^"]+' crossverify/__init__.py)"
           echo "tag=$tag  package=$pkg"
           [ "$tag" = "$pkg" ] || { echo "::error::tag v$tag != crossverify.__version__ ($pkg)"; exit 1; }
+      # Gate the release on a green commit: a tag can be pushed at any SHA, so do
+      # not trust that CI ran. Re-run the suite and the worked example (Python-only;
+      # Phase 5 auto-skips without R) before building, so a red commit never ships.
+      - name: Test gate (suite + example must pass)
+        run: |
+          uv sync --locked
+          uv run pytest -q
+          uv run crossverify --project examples/project.yaml
       - name: Build sdist + wheel
         run: uv build
       - name: Check distribution metadata
