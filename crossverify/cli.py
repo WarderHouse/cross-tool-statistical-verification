@@ -1,9 +1,12 @@
-"""Command-line entrypoint.
+"""Command-line entrypoint for the ``crossverify`` verification harness.
 
-python -m crossverify --project examples/project.yaml
-python -m crossverify --project examples/project.yaml --skip-r
-python -m crossverify --project examples/project.yaml --phases 1,3,5
-python -m crossverify --init my_study/
+Examples:
+    ```
+    python -m crossverify --project examples/project.yaml
+    python -m crossverify --project examples/project.yaml --skip-r
+    python -m crossverify --project examples/project.yaml --phases 1,3,5
+    python -m crossverify --init my_study/
+    ```
 """
 
 import argparse
@@ -33,6 +36,33 @@ ALL_PHASES = [1, 2, 3, 4, 5, 6]
 
 
 def main(argv=None):
+    """Parse arguments and run the requested verification phases end to end.
+
+    Parses the command line, then either scaffolds a new project (``--init``) or
+    loads the named project, validates it, and runs the selected phases (1 intake,
+    2 transforms, 3 consistency, 4 reproducibility, 5 cross-tool triangulation).
+
+    If the analysis adapter declares a ``prepare()`` step, it is the single source of
+    truth for the "analyzed" frame: the Phase-2 snapshot, the Phase-3 consistency
+    ranges/scales, and the frame handed to ``run()`` all derive from it, so they cannot
+    drift into different spaces. ``prepare()`` is called at most once, and only when a
+    phase actually needs it (never for an intake-only run). Results are compiled into a
+    report directory and a one-screen summary is printed.
+
+    Args:
+        argv: Argument vector to parse; when ``None``, ``argparse`` reads ``sys.argv``.
+
+    Returns:
+        Process exit code: ``0`` on success, ``1`` if any check failed, ``2`` if the
+        project failed validation. The ``--init`` path returns ``0``.
+
+    Raises:
+        SystemExit: Raised by ``argparse`` for ``--version``, ``--help``, or a usage
+            error such as a missing ``--project``.
+        FileNotFoundError: If the project file does not exist (via ``Project.load``).
+        ValueError: If the project file is missing the required ``data`` key (via
+            ``Project.load``).
+    """
     ap = argparse.ArgumentParser(
         prog="crossverify",
         description="Six-phase verification harness for statistical analysis, "
@@ -175,6 +205,20 @@ def main(argv=None):
 
 
 def _print_summary(project, all_results, comparison_rows, summary, phases):
+    """Print a one-screen, per-phase pass/fail/info summary and the output location.
+
+    Args:
+        project: The loaded ``Project``; its ``analysis_name`` heads the summary.
+        all_results: All ``CheckResult`` records across every phase that ran.
+        comparison_rows: Cross-tool comparison rows from Phase 5; each has a ``match``
+            flag. Empty when Phase 5 did not run.
+        summary: Report summary mapping with ``passed``, ``failed``, ``info``, and
+            ``out_dir`` keys.
+        phases: The set of phase numbers that were requested.
+
+    Returns:
+        None. Output is written to stdout.
+    """
     titles = {
         "1": "intake",
         "2": "transforms",
@@ -216,6 +260,18 @@ def _print_summary(project, all_results, comparison_rows, summary, phases):
 
 
 def _init(target):
+    """Scaffold a new project directory with starter ``project.yaml`` and analysis stubs.
+
+    Creates ``target`` (and parents) if needed, then writes ``project.yaml``,
+    ``analysis.py``, and ``analysis.R`` from the built-in templates. Existing files are
+    left untouched and reported as skipped, so re-running is non-destructive.
+
+    Args:
+        target: Directory to scaffold into; created if it does not exist.
+
+    Returns:
+        Exit code ``0`` once the scaffold is written.
+    """
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)
     files = {

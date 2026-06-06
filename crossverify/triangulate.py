@@ -20,7 +20,25 @@ from .checks import CheckResult, fmt, is_close, severity_for, tol_for
 
 
 def triangulate(py_results, r_results, tolerance):
-    """Return (list of CheckResult, list of comparison rows for the table)."""
+    """Compare Python and R results statistic by statistic within tolerance.
+
+    Iterates the union of statistic keys. A statistic absent from either side is always a
+    hard failure (the replication is incomplete). For statistics present in both, applies
+    the per-key tolerance (including magnitude-only comparison when ``abs`` is set); a
+    mismatch fails the build unless the statistic declares ``severity: info``, in which
+    case it is reported as INFO instead.
+
+    Args:
+        py_results: Mapping of statistic name to value from the Python implementation.
+        r_results: Mapping of statistic name to value from the R implementation.
+        tolerance: Tolerance configuration mapping, typically ``Project.tolerance``.
+
+    Returns:
+        A ``(checks, rows)`` tuple where ``checks`` is a list of
+        :class:`~crossverify.checks.CheckResult` and ``rows`` is a list of comparison-row
+        dicts (keys ``stat``, ``python``, ``r``, ``delta``, ``match``, ``note``) for the
+        report table.
+    """
     checks = []
     rows = []
     for k in sorted(set(py_results) | set(r_results)):

@@ -1,4 +1,4 @@
-"""Phase 1 — data intake and inspection.
+"""Phase 1 — inspect the dataset as loaded and surface its shape and contents.
 
 Reports the shape, dtypes, missing-value counts, numeric descriptives, and
 categorical frequencies of the dataset as loaded, so the researcher can confirm
@@ -9,6 +9,22 @@ from .checks import CheckResult
 
 
 def inspect(df):
+    """Summarize a dataset's shape, dtypes, missingness, and value distributions.
+
+    Builds the Phase-1 intake record: informational ``CheckResult`` lines for the
+    dataset dimensions, per-column dtypes, and missing-value counts, plus rendered
+    artifacts (a 10-row head, numeric ``describe()`` output, and top-10 categorical
+    frequency tables) for the verification log. All entries are informational; nothing
+    here passes or fails.
+
+    Args:
+        df: The dataset as loaded, inspected exactly as received without modification.
+
+    Returns:
+        A ``(results, artifacts)`` tuple, where ``results`` is a list of informational
+        ``CheckResult`` records and ``artifacts`` is a dict mapping ``"head"``,
+        ``"describe"``, and ``"categorical"`` to pre-rendered string blocks.
+    """
     results = []
     artifacts = {}
 
@@ -47,6 +63,16 @@ def inspect(df):
 
 
 def numeric_ranges(df):
-    """min/max per numeric column, used by centroid-in-range consistency checks."""
+    """Compute the (min, max) range of each numeric column.
+
+    Used by centroid-in-range consistency checks, which confirm a reported centroid
+    falls within the observed span of its column.
+
+    Args:
+        df: The frame to scan; only number-dtype columns are included.
+
+    Returns:
+        A dict mapping each numeric column name to a ``(min, max)`` tuple of ``float``.
+    """
     numeric = df.select_dtypes("number")
     return {c: (float(numeric[c].min()), float(numeric[c].max())) for c in numeric.columns}

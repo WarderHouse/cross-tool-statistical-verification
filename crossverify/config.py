@@ -9,10 +9,17 @@ import yaml
 
 
 def _within_base(path, base) -> bool:
-    """True if ``path`` resolves to a location inside ``base``.
+    """Report whether ``path`` resolves to a location inside ``base``.
 
     Used to keep a project file from pointing its data/scripts at arbitrary
     locations on disk (absolute paths or ``..`` traversal).
+
+    Args:
+        path: Candidate path to test, resolved before comparison.
+        base: Base directory the path must resolve inside, resolved before comparison.
+
+    Returns:
+        ``True`` if ``path`` resolves inside ``base``; ``False`` otherwise.
     """
     try:
         Path(path).resolve().relative_to(Path(base).resolve())
@@ -23,6 +30,31 @@ def _within_base(path, base) -> bool:
 
 @dataclass
 class Project:
+    """Hold a parsed and resolvable verification project specification.
+
+    Built by :meth:`load` from a YAML project file; paths are resolved relative to the
+    file's directory (``base_dir``). Use :meth:`validate` to check the resolved project
+    for problems before running it.
+
+    Attributes:
+        analysis_name: Human-readable analysis name; defaults to the project file stem.
+        data_path: Resolved path to the dataset to verify.
+        base_dir: Directory containing the project file; the root for relative paths and
+            the external-path containment check.
+        seed: Optional random seed passed to adapter steps that accept one.
+        python_module: Resolved path to the Python analysis module to verify, if declared.
+        r_script: Resolved path to the independent R script, if declared.
+        checks: Mapping of declared value checks.
+        group_checks: List of declared group-wise check specifications.
+        spot_checks: List of declared spot-check specifications.
+        transform_checks: List of declared Phase 2 transformation-check specifications.
+        tolerance: Tolerance configuration, with ``default_atol``/``default_rtol`` filled in.
+        metadata: Free-form project metadata mapping.
+        reproducibility: Reproducibility configuration mapping.
+        allow_external_paths: When ``False`` (default), ``data``/``python.module``/``r.script``
+            must resolve inside ``base_dir``; set ``True`` to permit out-of-tree paths.
+    """
+
     analysis_name: str
     data_path: Path
     base_dir: Path
@@ -42,6 +74,22 @@ class Project:
 
     @classmethod
     def load(cls, path) -> Project:
+        """Load a project from a YAML file, resolving its paths relative to that file.
+
+        Relative ``data``, ``python.module``, and ``r.script`` paths are resolved against
+        the project file's directory; absolute paths are kept as-is. Tolerance defaults
+        (``default_atol``, ``default_rtol``) are filled in when not specified.
+
+        Args:
+            path: Path to the YAML project file.
+
+        Returns:
+            A :class:`Project` populated from the file's contents.
+
+        Raises:
+            FileNotFoundError: If ``path`` does not exist.
+            ValueError: If the file omits the required ``data`` key.
+        """
         path = Path(path).resolve()
         if not path.exists():
             raise FileNotFoundError(f"Project file not found: {path}")
@@ -49,6 +97,7 @@ class Project:
         base = path.parent
 
         def resolve(rel):
+            """Resolve a relative path against ``base``; absolute/falsy values pass through."""
             if not rel:
                 return None
             p = Path(rel)
@@ -81,7 +130,16 @@ class Project:
         )
 
     def validate(self) -> list:
-        """Return a list of human-readable problems (empty list == OK)."""
+        """Check the resolved project and return human-readable problems.
+
+        Verifies that the dataset and declared Python module exist, that any declared R
+        script exists, and — unless ``allow_external_paths`` is set — that ``data``,
+        ``python.module``, and ``r.script`` all resolve inside ``base_dir``.
+
+        Returns:
+            A list of human-readable problem strings; an empty list means the project is
+            valid.
+        """
         problems = []
         if not self.data_path or not self.data_path.exists():
             problems.append(f"data file not found: {self.data_path}")

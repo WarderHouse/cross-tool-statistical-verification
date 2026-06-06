@@ -119,3 +119,18 @@ jobs:
           /tmp/wheel-venv/bin/crossverify --project "$GITHUB_WORKSPACE/examples/project.yaml" | tee out.txt
           grep -Eq "Cross-tool: [0-9]+/[0-9]+ statistics matched" out.txt \
             || { echo "::error::built wheel failed Phase 5 (packaged R helper not found?)"; exit 1; }
+
+  docs:
+    name: Docs build (mkdocs --strict)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - name: Install uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: true
+      # Build exactly as Read the Docs does (see .readthedocs.yaml): an ephemeral
+      # env from docs/requirements.txt, no project install (mkdocstrings reads the
+      # source statically via griffe). --strict fails on broken links/nav/refs.
+      - name: Build docs (strict)
+        run: uv run --no-project --with-requirements docs/requirements.txt mkdocs build --strict
