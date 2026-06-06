@@ -81,6 +81,15 @@ The cross-tool phase additionally needs **R** on your PATH with the `jsonlite`
 package (`install.packages("jsonlite")`). Everything else runs without R; use
 `--skip-r` to skip Phase 5.
 
+### Supported Python versions
+
+`crossverify` runs on **Python 3.9 – 3.14** (each is exercised in CI). The floor
+is 3.9 because the dependency stack requires it; we keep the range as wide as the
+dependencies allow rather than tracking the upstream release cycle. Note that
+`crossverify` is fully local and makes no network calls, so the interpreter
+version carries little risk — but 3.9 (and 3.10 after October 2026) no longer
+receive upstream security patches, so prefer a newer interpreter where you can.
+
 ## Quickstart
 
 Run the worked example — an OLS regression (`mpg ~ wt + hp`) implemented in both
