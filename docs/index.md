@@ -31,7 +31,7 @@ uv run crossverify --project examples/project.yaml
 ```
 
 ```
-crossverify 0.1.0 — OLS regression: mpg ~ wt + hp (mtcars)
+crossverify 0.1.1 — OLS regression: mpg ~ wt + hp (mtcars)
   Phase 5 triangulation    11 pass
   Cross-tool: 11/11 statistics matched within tolerance.
 

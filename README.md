@@ -115,7 +115,7 @@ uv run crossverify --project examples/project.yaml
 ```
 
 ```
-crossverify 0.1.0 — OLS regression: mpg ~ wt + hp (mtcars)
+crossverify 0.1.1 — OLS regression: mpg ~ wt + hp (mtcars)
   Phase 1 intake           3 info
   Phase 2 transforms       1 info
   Phase 3 consistency      8 pass
@@ -347,8 +347,8 @@ cannot upload anywhere, so merging the workflow is safe on its own.
    build reads it, and the workflow refuses a tag that disagrees).
 2. Commit on a green `main`, then tag and push:
    ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
+   git tag v0.1.1
+   git push origin v0.1.1
    ```
 3. The tag triggers the PyPI publish; then verify `pip install crossverify` from
    a clean environment. (Optional dry run first: trigger the workflow manually to

@@ -14,4 +14,4 @@ again in R); the harness orchestrates the runs, checks the numbers, compares the
 two implementations, and writes the evidence.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
