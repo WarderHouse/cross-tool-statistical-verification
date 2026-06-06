@@ -3,5 +3,10 @@
 # Kept separate from the package's runtime/dev deps so the docs build needs
 # neither the runtime stack (pandas/statsmodels) nor R — mkdocstrings reads the
 # source statically via griffe.
-mkdocs-material>=9.5,<10
-mkdocstrings[python]>=0.27,<0.31
+#
+# Pinned to the tested minor (patch updates allowed) so a stray mkdocs-material
+# or mkdocstrings release can't silently break the `--strict` build. Bump the
+# minors deliberately when updating the docs toolchain. (Dependabot's uv
+# ecosystem does not watch this pip file.)
+mkdocs-material>=9.7.6,<9.8
+mkdocstrings[python]>=0.30.1,<0.31
