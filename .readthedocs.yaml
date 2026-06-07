@@ -6,10 +6,9 @@ build:
   tools:
     python: "3.12"
   commands:
-    # Mirror the CI `docs` job exactly: use uv to build an ephemeral env from
-    # docs/requirements.txt and render the site with mkdocs. --no-project skips
-    # installing crossverify (mkdocstrings reads the source statically), so the
-    # docs build pulls neither the runtime deps nor R.
+    # Mirror the CI `docs` job exactly: install only the locked `docs` dependency
+    # group (defined in pyproject.toml) and render the site with mkdocs.
+    # `--only-group docs` pulls neither the runtime stack (pandas/statsmodels) nor
+    # R — mkdocstrings reads the source statically via griffe.
     - pip install uv
-    - uv run --no-project --with-requirements docs/requirements.txt
-        mkdocs build --strict --site-dir "$READTHEDOCS_OUTPUT/html"
+    - uv run --only-group docs mkdocs build --strict --site-dir "$READTHEDOCS_OUTPUT/html"

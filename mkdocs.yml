@@ -8,10 +8,6 @@ repo_name: WarderHouse/cross-tool-statistical-verification
 edit_uri: edit/main/docs/
 copyright: MIT-licensed. Runs entirely on your machine; no network calls.
 
-# docs/requirements.txt is a build input, not a doc page — keep it out of the site.
-exclude_docs: |
-  requirements.txt
-
 theme:
   name: material
   features:
