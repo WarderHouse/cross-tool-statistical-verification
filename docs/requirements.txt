@@ -4,4 +4,4 @@
 # neither the runtime stack (pandas/statsmodels) nor R — mkdocstrings reads the
 # source statically via griffe.
 mkdocs-material>=9.5,<10
-mkdocstrings[python]>=0.27,<0.31
+mkdocstrings[python]>=0.30.1,<0.31
