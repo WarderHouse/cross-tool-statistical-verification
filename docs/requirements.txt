@@ -3,5 +3,5 @@
 # Kept separate from the package's runtime/dev deps so the docs build needs
 # neither the runtime stack (pandas/statsmodels) nor R — mkdocstrings reads the
 # source statically via griffe.
-mkdocs-material>=9.5,<10
+mkdocs-material>=9.7.6,<10
 mkdocstrings[python]>=0.27,<0.31
