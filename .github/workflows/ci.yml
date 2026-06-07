@@ -129,8 +129,9 @@ jobs:
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
-      # Build exactly as Read the Docs does (see .readthedocs.yaml): an ephemeral
-      # env from docs/requirements.txt, no project install (mkdocstrings reads the
-      # source statically via griffe). --strict fails on broken links/nav/refs.
+      # Build exactly as Read the Docs does (see .readthedocs.yaml): install only
+      # the locked `docs` dependency group — no runtime stack (pandas/statsmodels)
+      # and no R, since mkdocstrings reads the source statically via griffe.
+      # --strict fails on broken links/nav/refs.
       - name: Build docs (strict)
-        run: uv run --no-project --with-requirements docs/requirements.txt mkdocs build --strict
+        run: uv run --only-group docs mkdocs build --strict

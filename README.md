@@ -37,7 +37,7 @@ Preview it locally with the same toolchain CI and Read the Docs use — no insta
 of the package or R required, since mkdocstrings reads the source statically:
 
 ```bash
-uv run --no-project --with-requirements docs/requirements.txt mkdocs serve
+uv run --only-group docs mkdocs serve
 ```
 
 ## What it checks

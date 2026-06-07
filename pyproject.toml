@@ -55,9 +55,16 @@ Issues = "https://github.com/WarderHouse/cross-tool-statistical-verification/iss
 # Development tooling, installed by default with `uv sync`.
 dev = [
     "pytest>=8",
-    # Pinned exactly to match .pre-commit-config.yaml (rev: v0.15.15) so local
+    # Pinned exactly to match .pre-commit-config.yaml (rev: v0.15.16) so local
     # pre-commit and CI `ruff format --check` can never disagree on formatting.
     "ruff==0.15.16",
+]
+# Docs toolchain. Not installed by default; the docs build requests it explicitly
+# (`uv run --only-group docs ...`), so it pulls neither the runtime stack nor R —
+# mkdocstrings reads the source statically via griffe. Pinned to the tested minor.
+docs = [
+    "mkdocs-material>=9.7.6,<9.8",
+    "mkdocstrings[python]>=0.30.1,<0.31",
 ]
 
 [build-system]
