@@ -1,6 +1,7 @@
 # Dependabot keeps dependencies and CI action pins current.
-# It opens grouped pull requests on a weekly cadence; a maintainer reviews
-# and merges them once CI is green. See issue #9.
+# It opens grouped pull requests on a weekly cadence. Patch/minor updates are
+# auto-approved and auto-merged once CI is green (see the dependabot-auto-merge
+# workflow); major bumps come as separate PRs that wait for a human. See issue #9.
 version: 2
 updates:
   # Python dependencies — uv-managed (pyproject.toml + uv.lock).
@@ -15,8 +16,6 @@ updates:
       prefix: "deps"
     labels:
       - "dependencies"
-    assignees:
-      - "olivercrocco"
     groups:
       # Batch minor/patch bumps to limit noise; major bumps come as separate
       # PRs so breaking changes get individual review. Runtime and dev are
@@ -46,8 +45,6 @@ updates:
       prefix: "ci"
     labels:
       - "dependencies"
-    assignees:
-      - "olivercrocco"
     groups:
       github-actions:
         patterns:

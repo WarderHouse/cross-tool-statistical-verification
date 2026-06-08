@@ -1,0 +1,32 @@
+name: Dependabot auto-merge
+
+# Let routine dependency bumps clear themselves. For a Dependabot PR whose
+# highest change is patch or minor, approve it and enable auto-merge so GitHub
+# merges it once the required CI checks pass. MAJOR bumps are intentionally left
+# alone — they can break, so they wait for a human review. Auto-merge respects
+# branch protection and never merges a red PR, so CI is still the gate.
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-auto-merge:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2
+      - name: Approve and enable auto-merge (patch/minor only)
+        if: >-
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.update-type == 'version-update:semver-minor'
+        run: |
+          gh pr review --approve "$PR_URL"
+          gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
