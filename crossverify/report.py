@@ -160,8 +160,10 @@ def compile_report(
         template_path: Traversable or path/str to the methodology template.
 
     Returns:
-        A summary dict with ``passed``, ``failed``, and ``info`` counts and ``out_dir``
-        (the output directory as a string).
+        The full machine-readable results dict — the contents of
+        ``verification_results.json`` (``totals``, per-check ``checks``, the
+        Python-vs-R ``comparison`` rows, and the environment fields) — plus an
+        ``out_dir`` key holding the output directory as a string.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -263,12 +265,11 @@ def compile_report(
     }
     (out_dir / "verification_results.json").write_text(json.dumps(summary, indent=2))
 
-    return {
-        "passed": total_passed,
-        "failed": total_failed,
-        "info": total_info,
-        "out_dir": str(out_dir),
-    }
+    # Return the full machine-readable results (the JSON contents) plus the output
+    # directory, so callers — the CLI and the programmatic API — share one source
+    # of truth rather than re-deriving counts.
+    summary["out_dir"] = str(out_dir)
+    return summary
 
 
 def env_info(r_version_str):
