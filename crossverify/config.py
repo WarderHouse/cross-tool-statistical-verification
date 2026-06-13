@@ -129,12 +129,18 @@ class Project:
             allow_external_paths=bool(spec.get("allow_external_paths", False)),
         )
 
-    def validate(self) -> list:
+    def validate(self, *, force_contain: bool = False) -> list:
         """Check the resolved project and return human-readable problems.
 
         Verifies that the dataset and declared Python module exist, that any declared R
         script exists, and — unless ``allow_external_paths`` is set — that ``data``,
         ``python.module``, and ``r.script`` all resolve inside ``base_dir``.
+
+        Args:
+            force_contain: When ``True``, enforce path containment even if the project
+                file sets ``allow_external_paths: true``. The MCP server passes this so
+                that a project's own opt-out cannot disable containment for code that
+                will then be executed; the opt-out moves to the server operator instead.
 
         Returns:
             A list of human-readable problem strings; an empty list means the project is
@@ -149,7 +155,14 @@ class Project:
             problems.append(f"python module not found: {self.python_module}")
         if self.r_script and not self.r_script.exists():
             problems.append(f"r script declared but not found: {self.r_script}")
-        if not self.allow_external_paths:
+        if force_contain or not self.allow_external_paths:
+            # When containment is forced (e.g. by the MCP server), the project's own
+            # allow_external_paths cannot help, so don't suggest it.
+            hint = (
+                ""
+                if force_contain
+                else " (set 'allow_external_paths: true' in the project file to permit this)"
+            )
             for label, p in (
                 ("data", self.data_path),
                 ("python.module", self.python_module),
@@ -157,8 +170,6 @@ class Project:
             ):
                 if p and not _within_base(p, self.base_dir):
                     problems.append(
-                        f"{label} resolves outside the project folder: "
-                        f"{Path(p).resolve()} (set 'allow_external_paths: true' in "
-                        f"the project file to permit this)"
+                        f"{label} resolves outside the project folder: {Path(p).resolve()}{hint}"
                     )
         return problems
