@@ -125,11 +125,13 @@ def _output_paths(out_dir: Path) -> dict:
     return paths
 
 
-def validate(project_path) -> list[str]:
+def validate(project_path, *, force_contain: bool = False) -> list[str]:
     """Load a project file and return its validation problems.
 
     Args:
         project_path: Path to the YAML project file.
+        force_contain: When ``True``, enforce path containment even if the project
+            file sets ``allow_external_paths: true`` (see :meth:`Project.validate`).
 
     Returns:
         A list of human-readable problem strings; an empty list means the project
@@ -139,7 +141,7 @@ def validate(project_path) -> list[str]:
         FileNotFoundError: If the project file does not exist.
         ValueError: If the project file omits the required ``data`` key.
     """
-    return Project.load(project_path).validate()
+    return Project.load(project_path).validate(force_contain=force_contain)
 
 
 def inspect_dataset(csv_path) -> dict:
@@ -201,7 +203,15 @@ def scaffold(target_dir) -> dict:
     return {"target": str(target), "written": written, "skipped": skipped}
 
 
-def verify(project_path, *, phases=None, skip_r: bool = False, seed=None, out=None) -> dict:
+def verify(
+    project_path,
+    *,
+    phases=None,
+    skip_r: bool = False,
+    seed=None,
+    out=None,
+    force_contain: bool = False,
+) -> dict:
     """Run the six-phase verification pipeline and return structured results.
 
     Loads and validates the project, then runs the requested phases (1 intake,
@@ -224,6 +234,9 @@ def verify(project_path, *, phases=None, skip_r: bool = False, seed=None, out=No
         seed: Optional override for the project's random seed.
         out: Output directory for the artifacts; defaults to
             ``crossverify_out/<project-stem>/``.
+        force_contain: When ``True``, enforce path containment even if the project
+            file sets ``allow_external_paths: true``. The MCP server passes this so a
+            project's own opt-out cannot disable containment for executed code.
 
     Returns:
         A dict carrying the overall ``verdict`` (``"pass"`` / ``"fail"`` /
@@ -242,7 +255,7 @@ def verify(project_path, *, phases=None, skip_r: bool = False, seed=None, out=No
     if seed is not None:
         project.seed = seed
 
-    problems = project.validate()
+    problems = project.validate(force_contain=force_contain)
     if problems:
         return {"verdict": "invalid", "problems": problems, "scope_caveat": SCOPE_CAVEAT}
 

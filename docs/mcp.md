@@ -42,14 +42,18 @@ per-statistic `|Δ|` between Python and R — never a console summary to parse.
     An agent that chooses `project_path` can cause arbitrary code execution.
     Two guardrails are enforced, but they are **not** a sandbox:
 
-    1. **Path containment (default).** A project whose `data` / `python.module` /
-       `r.script` resolve *outside* the project folder comes back
-       `verdict="invalid"` — no code runs. Opt out per-project with
-       `allow_external_paths: true` (only for projects you trust).
-    2. **Bounded subprocess.** Each `verify_analysis` runs in a child process with
-       a timeout (`CROSSVERIFY_MCP_TIMEOUT`, default 300 s) and a minimal,
-       allowlisted environment, so a runaway or hostile analysis is time-bounded
-       and cannot read the server's tokens or credentials.
+    1. **Path containment (enforced by the server).** A project whose `data` /
+       `python.module` / `r.script` resolve *outside* the project folder comes back
+       `verdict="invalid"` — no code runs. The server forces this regardless of the
+       project file, so an agent that authors the project cannot disable it with
+       `allow_external_paths: true`. The opt-out belongs to the operator, not the
+       project: set `CROSSVERIFY_MCP_ALLOW_EXTERNAL=1` in the server's environment
+       to honor the project flag again, and only for projects you trust.
+    2. **Bounded subprocess.** Each `verify_analysis` runs in its own process group
+       with a timeout (`CROSSVERIFY_MCP_TIMEOUT`, default 300 s) and a minimal,
+       allowlisted environment. On timeout the whole group is killed, including the
+       `Rscript` grandchild, so a runaway or hostile analysis is genuinely
+       time-bounded and cannot read the server's tokens or credentials.
 
     **Run the server in a sandbox** (container/VM, no credentials in the
     environment, least-privilege filesystem). The read-only tools do not execute
