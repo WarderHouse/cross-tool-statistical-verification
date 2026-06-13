@@ -40,7 +40,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           tag="${GITHUB_REF_NAME#v}"
-          pkg="$(grep -oP '__version__\s*=\s*"\K[^"]+' crossverify/__init__.py)"
+          # Read the version through hatch (the build backend's own version hook)
+          # so the guard never depends on how __version__ is quoted in source.
+          pkg="$(uvx hatch version)"
           echo "tag=$tag  package=$pkg"
           [ "$tag" = "$pkg" ] || { echo "::error::tag v$tag != crossverify.__version__ ($pkg)"; exit 1; }
       # Gate the release on a green commit: a tag can be pushed at any SHA, so do
@@ -54,7 +56,8 @@ jobs:
       - name: Build sdist + wheel
         run: uv build
       - name: Check distribution metadata
-        run: uvx twine check dist/*
+        # Pin twine so the metadata check is reproducible across releases.
+        run: uvx twine@6.2.0 check dist/*
       # Verify the exact artifact we are about to publish installs and its entry
       # point runs (Python-only; the full Phase-5-from-wheel test lives in ci.yml).
       - name: Smoke-test the built wheel
@@ -63,6 +66,14 @@ jobs:
           /tmp/relcheck/bin/pip install --quiet dist/*.whl
           /tmp/relcheck/bin/crossverify --help > /dev/null
           /tmp/relcheck/bin/python -c "import crossverify; print('import OK', crossverify.__version__)"
+      # Also exercise the sdist build path: twine check covers sdist metadata, but
+      # only a real install proves the sdist builds from source and imports/runs.
+      - name: Smoke-test the built sdist
+        run: |
+          python3 -m venv /tmp/relcheck-sdist
+          /tmp/relcheck-sdist/bin/pip install --quiet dist/*.tar.gz
+          /tmp/relcheck-sdist/bin/crossverify --help > /dev/null
+          /tmp/relcheck-sdist/bin/python -c "import crossverify; print('sdist import OK', crossverify.__version__)"
       - name: Upload distributions
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
