@@ -14,10 +14,15 @@ Examples:
 """
 
 import argparse
+import contextlib
+import json
 import sys
 from pathlib import Path
 
 from . import __version__, api
+
+# verdict -> process exit code, shared by the human and --json output paths.
+_EXIT_CODES = {"pass": 0, "fail": 1, "invalid": 2}
 
 
 def main(argv=None):
@@ -55,21 +60,55 @@ def main(argv=None):
         help="Comma-separated phases to run (default: all). E.g. 1,3,5",
     )
     ap.add_argument("--skip-r", action="store_true", help="Skip Phase 5 cross-tool triangulation.")
+    ap.add_argument(
+        "--force-contain",
+        action="store_true",
+        help="Enforce path containment even if the project sets allow_external_paths: true.",
+    )
     ap.add_argument("--seed", type=int, default=None, help="Override the project's random seed.")
     ap.add_argument("--init", metavar="DIR", help="Scaffold a new project in DIR and exit.")
+    ap.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the full result as JSON on stdout instead of the human summary.",
+    )
     ap.add_argument("--version", action="version", version=f"crossverify {__version__}")
     args = ap.parse_args(argv)
 
     if args.init:
-        _print_scaffold(api.scaffold(args.init))
+        result = api.scaffold(args.init)
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            _print_scaffold(result)
         return 0
     if not args.project:
         ap.error("--project is required (or use --init DIR)")
 
     phases = {int(x) for x in args.phases.split(",") if x.strip()}
-    result = api.verify(
-        args.project, phases=phases, skip_r=args.skip_r, seed=args.seed, out=args.out
-    )
+
+    # The Python adapter's run()/prepare() execute in this process. In --json mode
+    # (the machine seam the MCP server parses) a stray print() in that user code
+    # would land on stdout ahead of the JSON and corrupt it, so redirect the
+    # analysis's stdout to stderr; only the json.dumps below reaches stdout. The R
+    # child's stdout is already captured separately by the runner.
+    redirect = contextlib.redirect_stdout(sys.stderr) if args.json else contextlib.nullcontext()
+    with redirect:
+        result = api.verify(
+            args.project,
+            phases=phases,
+            skip_r=args.skip_r,
+            seed=args.seed,
+            out=args.out,
+            force_contain=args.force_contain,
+        )
+
+    # --json is the machine seam the MCP server subprocesses: emit the full result
+    # structure (including verdict=="invalid" + problems) and map verdict to the
+    # exit code, rather than printing the human summary.
+    if args.json:
+        print(json.dumps(result, indent=2))
+        return _EXIT_CODES[result["verdict"]]
 
     if result["verdict"] == "invalid":
         print("Project has problems:", file=sys.stderr)

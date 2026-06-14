@@ -68,12 +68,15 @@ markdown_extensions:
 nav:
   - Home: index.md
   - The Protocol: PROTOCOL.md
+  - MCP server: mcp.md
   - API Reference:
+      - api: reference/api.md
       - checks: reference/checks.md
       - cli: reference/cli.md
       - config: reference/config.md
       - consistency: reference/consistency.md
       - intake: reference/intake.md
+      - mcp_server: reference/mcp_server.md
       - report: reference/report.md
       - reproduce: reference/reproduce.md
       - runner: reference/runner.md
