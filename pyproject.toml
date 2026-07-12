@@ -64,7 +64,7 @@ dev = [
     "pytest>=8",
     # Pinned exactly to match .pre-commit-config.yaml (rev: v0.15.16) so local
     # pre-commit and CI `ruff format --check` can never disagree on formatting.
-    "ruff==0.15.17",
+    "ruff==0.15.21",
 ]
 # Docs toolchain. Not installed by default; the docs build requests it explicitly
 # (`uv run --only-group docs ...`), so it pulls neither the runtime stack nor R —
