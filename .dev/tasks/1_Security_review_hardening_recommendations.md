@@ -46,12 +46,20 @@ The review confirmed a conservative posture (`yaml.safe_load` at `crossverify/co
 4. **F5 — minimal env for the R child (`crossverify/runner.py`).** Extract `def _r_child_env(helper_path)` that copies only an allowlist from `os.environ` and sets `CROSSVERIFY_R`. Use it in `run_r` in place of `env = dict(os.environ)` (`crossverify/runner.py:89`).
 
    ```python
-   _R_ENV_ALLOW = ("PATH", "HOME", "LANG", "LC_ALL", "TZ", "TMPDIR",
-                   "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH")
+   _R_ENV_ALLOW = (
+       "PATH",
+       "HOME",
+       "LANG",
+       "LC_ALL",
+       "TZ",
+       "TMPDIR",
+       "LD_LIBRARY_PATH",
+       "DYLD_LIBRARY_PATH",
+   )
+
 
    def _r_child_env(helper_path):
-       env = {k: v for k, v in os.environ.items()
-              if k in _R_ENV_ALLOW or k.startswith(("R_", "LC_"))}
+       env = {k: v for k, v in os.environ.items() if k in _R_ENV_ALLOW or k.startswith(("R_", "LC_"))}
        env["CROSSVERIFY_R"] = str(helper_path)
        return env
    ```
