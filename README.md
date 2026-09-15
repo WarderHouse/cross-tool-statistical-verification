@@ -98,12 +98,13 @@ package (`install.packages("jsonlite")`). Everything else runs without R; use
 
 ### Supported Python versions
 
-`crossverify` runs on **Python 3.9 – 3.14** (each is exercised in CI). The floor
-is 3.9 because the dependency stack requires it; we keep the range as wide as the
-dependencies allow rather than tracking the upstream release cycle. Note that
-`crossverify` is fully local and makes no network calls, so the interpreter
-version carries little risk — but 3.9 (and 3.10 after October 2026) no longer
-receive upstream security patches, so prefer a newer interpreter where you can.
+`crossverify` runs on Python 3.10 to 3.14, and CI exercises each version. Python
+3.9 is no longer supported: it reached end of life in October 2025, and the fixed
+releases of several dependencies (urllib3, requests, pytest, pymdown-extensions)
+need 3.10 or later. On 3.9, pip installs the last release that supported it.
+`crossverify` is fully local and makes no network calls, so the interpreter version
+carries little risk. Python 3.10 stops receiving upstream security patches in
+October 2026, so prefer a newer interpreter where you can.
 
 ## Quickstart
 
